@@ -1,0 +1,37 @@
+===============================================================================
+HISTORY                                                  fpa-1.0.0 (2004/02/18)
+===============================================================================
+
+fpa-1.0.0 (2004/02/18):
+
+o This is the initial CVS version of the code, and is based on the 1996
+  version, with the following changes:
+  
+  - A few MFE-code specific couplings were eliminated.
+  
+  - Vectors stored as rank-2 arrays (natural in the MFE context) have been
+    replaced by rank-1 arrays, which is more typical of actual usage.
+    
+  - All the data describing the state of the acceleration procedure has been
+    encapsulated into a derived type that is now passed to the procedures,
+    permitting multiple acceleration processes to be active simultaneously.
+    The original version stored the state as module data, which limited the
+    procedure to a single instance.
+    
+  - More code comments.
+
+o Code released under the extremely permissive MIT license.
+
+o Included is a test code that demonstrates the usage of the accelerator
+  by solving a nonlinear elliptic equation on a regular 2D grid.
+  
+
+Early, pre-CVS History:
+
+o The acceleration procedure was originally implemented in a Fortran 77 code
+  circa 1990, and used in the gradient-weighted moving finite element codes
+  of Carlson and Miller.  Their 1998 SISC papers, which describe these MFE
+  codes, also includes a description of the acceleration procedure.
+
+o The code was reimplemented in Fortran 90 about 1995 as part of a new suite
+  of moving finite element codes.  The latest version is dated 1996/06/15.
