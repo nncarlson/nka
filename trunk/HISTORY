@@ -1,6 +1,11 @@
 ===============================================================================
-HISTORY                                                  fpa-1.0.0 (2004/12/18)
+HISTORY                                                  fpa-1.1.1 (2004/12/22)
 ===============================================================================
+fpa-1.1.1 (2004/12/22):
+
+o Fixed a bug in fpa_defined introduced in 1.0.0 which would cause a spurious
+  false result due to over-aggressive checking.
+
 fpa-1.1.0 (2004/12/18):
 
 o Fixed a problem reported by Dave Korzekwa at LANL in which fpa_correction
