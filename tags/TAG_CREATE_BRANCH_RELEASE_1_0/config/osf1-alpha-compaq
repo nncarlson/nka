@@ -1,0 +1,21 @@
+##
+## COMPAQ Fortran compiler version 5.5
+##
+
+F90 = f95
+F90FLAGS = -O $(DEFINES) $(INC)
+
+DEFINES= -DNDEBUG -DSUPPORTS_TR15581
+INC= -I../src
+
+CLEANFILES = *.o *.mod
+
+.SUFFIXES: .f90 .F90
+.F90.o:
+	$(F90) $(F90FLAGS) -c $<
+.f90.o:
+	$(F90) $(F90FLAGS) -c $<
+.f90:
+	$(F90) $(F90FLAGS) $(LDFLAGS) $< -o $@
+
+%.o : %.mod
