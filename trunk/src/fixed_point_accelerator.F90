@@ -4,10 +4,14 @@
 !! Neil N. Carlson <nnc@newmexico.com>
 !! Last revised 15 Feb 2004; initial F90 version 1996.
 !!
-!! This module implements a nonlinear subspace acceleration procedure
-!! of Carlson and Miller [1] for the the fixed-point iterative solution
-!! of nonlinear equations.  A modified Newton iteration is one example
-!! of such an iteration.
+!! This module implements the nonlinear subspace acceleration method of Carlson
+!! and Miller [1] for the fixed-point iterative solution of nonlinear equations.
+!! An inexact Newton iteration, in which the Newton correction equation is only
+!! approximately solved (because the Jacobian matrix is approximated and/or the
+!! linear system is not solved exactly), can be interpreted as a fixed-point
+!! iteration for a preconditioned equation.  Using this acceleration method in
+!! such an iterative method results in a type of accelerated inexact Newton (AIN)
+!! scheme.
 !!
 !! [1] N.N.Carlson and K.Miller, "Design and application of a gradient-
 !!     weighted moving finite element code I: in one dimension", SIAM J.
@@ -41,16 +45,17 @@
 !!
 !! This module provides the derived data type FPA_STATE with private components
 !! that encapsulates the entire state of the acceleration procedure, and the
-!! following procedures.  All real arguments are of double precision kind.
+!! following procedures that operate on variables of that type.  All real
+!! arguments are of kind FPA_RK (double precision).
 !!
-!!  CALL FPA_CREATE (THIS, F, MAXV, VTOL)
+!!  CALL FPA_CREATE (STATE, F, MAXV, VTOL)
 !!
-!!    TYPE(FPA_STATE), INTENT(OUT) :: THIS
-!!    REAL(KIND=DP),   INTENT(IN) :: F(:)
+!!    TYPE(FPA_STATE), INTENT(OUT) :: STATE
+!!    REAL(FPA_RK),    INTENT(IN) :: F(:)
 !!    INTEGER,         INTENT(IN) :: MAXV
-!!    REAL(KIND=DP),   INTENT(IN), OPTIONAL :: VTOL
+!!    REAL(FPA_RK),    INTENT(IN), OPTIONAL :: VTOL
 !!
-!!    This creates a new state variable THIS capable of using as many as
+!!    This creates a new state variable STATE capable of using as many as
 !!    MVEC vectors in the acceleration procedure, whose size equals the
 !!    size of the vector argument F.  The optional argument VTOL specifies
 !!    the the vector drop tolerance: a vector is dropped when the sine of
@@ -58,40 +63,86 @@
 !!    vectors is less than this value.  The default is 0.01.  The only use
 !!    of F is to glean its shape; its value is ignored.
 !!
-!!  CALL FPA_DESTROY (THIS)
+!!  CALL FPA_DESTROY (STATE)
 !!
-!!    TYPE(FPA_STATE), INTENT(OUT) :: THIS
-!!  
-!!    This deallocates all the array components of the state THIS and
+!!    TYPE(FPA_STATE), INTENT(INOUT) :: STATE
+!!
+!!    This deallocates all the array components of the state STATE and
 !!    returns it to its default initialization state.
 !!
-!!  CALL FPA_RESTART (THIS)
+!!  CALL FPA_CORRECTION (STATE, F, DP)
 !!
-!!    TYPE(FPA_STATE), INTENT(OUT) :: THIS
-!!
-!!    This sets a flag in the state THIS which will cause the next call
-!!    to FPA_CORRECTION to begin accumulating a new subspace, flushing
-!!    any previous subspace.
-!!
-!!  CALL FPA_CORRECTION (THIS, F)
-!!
-!!    TYPE(FPA_STATE), INTENT(INOUT) :: THIS
-!!    REAL(KIND=DP),   INTENT(INOUT) :: F(:)
+!!    TYPE(FPA_STATE), INTENT(INOUT) :: STATE
+!!    REAL(FPA_RK),    INTENT(INOUT) :: F(:)
+!!    OPTIONAL :: DP
 !!
 !!    This call takes the function value F, which would be the correction
-!!    vector in the fixed point iteration, and overwrites it with the
-!!    accelerated correction computed from the current state THIS.  The
-!!    state THIS is updated with input function value F and the returned
-!!    correction.
+!!    vector in a fixed point iteration, and overwrites it with the
+!!    accelerated correction computed from the subspace stored in STATE.
+!!    This acceleration subspace is updated prior to computing the correction
+!!    using F and previous function value and correction that were cached on
+!!    the preceding call to FPA_CORRECTION (if any).  The input function
+!!    value F and the returned correction are then cached in STATE for the
+!!    next call.
+!!
+!!    DP is an optional procedure argument having the same interface as the
+!!    intrinsic function DOT_PRODUCT.  If DP is present, it is used to compute
+!!    vector dot products instead of DOT_PRODUCT.  For example, in a parallel
+!!    implementation of an iterative nonlinear solve where the vector components
+!!    are distributed across processors, a global dot product procedure, which
+!!    performs the required communication internally, should be passed as DP
+!!
+!!  CALL FPA_RELAX (STATE)
+!!
+!!    TYPE(FPA_STATE), INTENT(INOUT) :: STATE
+!!
+!!    A call to FPA_CORRECTION caches the passed function value and returned
+!!    accelerated correction in the state variable for use on the following
+!!    call where they are used to update the acceleration subspace.  FPA_RELAX
+!!    deletes these pending vectors from STATE, so that the next call to
+!!    FPA_CORRECTION will not update the acceleration subspace prior to
+!!    computing an accelerated correction.
+!!
+!!    This can be used to carry over the subspace from one nonlinear solve
+!!    to another.  FPA_CORRECTION expects that the passed function value is
+!!    connected to the preceding correction (if it exists), but this is not
+!!    normally true for the first call in a subsequent nonlinear solve, and
+!!    would result in the subspace being updated with bogus information.  A
+!!    call to FPA_RELAX at the end of a nonlinear solve prevents this from
+!!    occuring.  Be very cautious when using this strategy; it may not be
+!!    appropriate.
+!!
+!!  CALL FPA_RESTART (STATE)
+!!
+!!    TYPE(FPA_STATE), INTENT(OUT) :: STATE
+!!
+!!    This call flushes the acceleration subspace from STATE, returning STATE
+!!    to its state as returned by FPA_CREATE; the next call to FPA_CORRECTION
+!!    will start the process of accumulating a new subspace.  Typical usage
+!!    would be to call FPA_RESTART at the start of each in a series of
+!!    nonlinear solves, allowing a single state to be reused and avoiding the
+!!    overhead of repeated creation and destruction of state variables.
+!!
+!!  FPA_DEFINED(STATE)
+!!
+!!    TYPE(FPA_STATE), INTENT(IN) :: STATE
+!!
+!!    This logical function returns the value true if STATE is defined;
+!!    otherwise it returns the value false.  Defined means that the components
+!!    of STATE are properly defined, and in particular that the linked-list
+!!    storage of vectors is coherently defined.  Due to the amount of effort
+!!    this function goes through to examine the structure, it is primarily
+!!    intended to be used in debugging situations.
 !!
 !! USAGE
 !!
 !!  The following simple example shows the usage of this acceleration
 !!  procedure.  For more details, see the associated documentation.
-!!  Consider a quasi-Newton iteration for solving the nonlinear system
+!!  Consider an inexact-Newton iteration for solving the nonlinear system
 !!  f(x) = 0.  Suppose pc(y) is some preconditioning procedure that applies
 !!  some approximation to the inverse of the Jacobian of f(x) to the vector y.
-!!  The original fixed point iteration would look something like
+!!  The original inexact-Newton iteration (equivalent to the fixed point
+!!  iteration for pc(f(x)) = 0) would look something like
 !!
 !!    x = 0
 !!    do <until converged>
@@ -99,53 +150,57 @@
 !!      x = x - v
 !!    end do
 !!
-!!  The accelerated iteration would look something like
+!!  The accelerated inexact-Newton (AIN) iteration would look something like
 !!
-!!    call fpa_create (fpa, v, mvec=5)
+!!    call fpa_create (state, v, mvec=5)
 !!    x = 0
 !!    do <until converged>
 !!      v = pc(f(x))
-!!      call fpa_correction (fpa, v)
+!!      call fpa_correction (state, v)
 !!      x = x - v
 !!    end do
-!!    call fpa_destroy (fpa)
+!!    call fpa_destroy (state)
 !!
 !! The create and destroy can of course be moved outside any nonlinear
 !! solution procedure containing this iteration, and a single state variable
 !! used for repeated calls to the procedure.  This avoids the repeated
 !! allocations and deallocations of arrays associated with the state variable.
-!! In this case, it might be advisable to include a call to fpa_restart
-!! before the loop so that each iterative solve starts with clean slate.
+!! In this case, one should either include a call to FPA_RESTART before the
+!! loop so that each iterative solve starts with clean slate, or include a
+!! call to FPA_RELAX after the loop so that first call to FPA_CORRECTION in
+!! the next iterative solve doesn't update the acceleration subspace with
+!! bogus information.
 !!
 
 #include "f90_assert.fpp"
 
 #ifdef SUPPORTS_TR15581
-# define DEFINED allocated
+# define _DEFINED_ allocated
 #else
-# define DEFINED associated
+# define _DEFINED_ associated
 #endif
 
 module fixed_point_accelerator
 
+  use fpa_kinds
   implicit none
   private
 
-  public :: fpa_create, fpa_destroy, fpa_restart, fpa_correction
-  
-  integer, parameter :: dp = kind(1.0d0)  ! double precision kind
+  public :: fpa_create, fpa_destroy, fpa_restart, fpa_correction, fpa_relax, fpa_defined, fpa_rk
+
+  integer, parameter :: rk = fpa_rk
 
 #ifdef SUPPORTS_TR15581
   type, public :: fpa_state
     private
-    logical :: initialized = .false.
-    logical :: empty = .true.
+    logical :: subspace = .false.
+    logical :: pending  = .false.
     integer :: mvec = 0             ! maximum number of vectors
-    real(kind=dp) :: tol = 0.01_dp  ! vector drop tolerance
+    real(kind=rk) :: tol = 0.01_rk  ! vector drop tolerance
     !! Subspace storage.
-    real(kind=dp), allocatable :: v(:,:)   ! correction vectors
-    real(kind=dp), allocatable :: w(:,:)   ! function difference vectors
-    real(kind=dp), allocatable :: h(:,:)   ! matrix of inner products
+    real(kind=rk), allocatable :: v(:,:)   ! correction vectors
+    real(kind=rk), allocatable :: w(:,:)   ! function difference vectors
+    real(kind=rk), allocatable :: h(:,:)   ! matrix of inner products
     !! Linked-list organization of the vector storage.
     integer :: first, last, free
     integer, allocatable :: next(:), prev(:)
@@ -153,14 +208,14 @@ module fixed_point_accelerator
 #else
   type, public :: fpa_state
     private
-    logical :: initialized = .false.
-    logical :: empty = .true.
+    logical :: subspace = .false.
+    logical :: pending  = .false.
     integer :: mvec = 0             ! maximum number of vectors
-    real(kind=dp) :: tol = 0.01_dp  ! vector drop tolerance
+    real(kind=rk) :: tol = 0.01_rk  ! vector drop tolerance
     !! Subspace storage.
-    real(kind=dp), pointer :: v(:,:) => null()  ! correction vectors
-    real(kind=dp), pointer :: w(:,:) => null()  ! function difference vectors
-    real(kind=dp), pointer :: h(:,:) => null()  ! matrix of inner products
+    real(kind=rk), pointer :: v(:,:) => null()  ! correction vectors
+    real(kind=rk), pointer :: w(:,:) => null()  ! function difference vectors
+    real(kind=rk), pointer :: h(:,:) => null()  ! matrix of inner products
     !! Linked-list organization of the vector storage.
     integer :: first, last, free
     integer, pointer :: next(:) => null()
@@ -174,30 +229,31 @@ contains
  !! FPA_CREATE
  !!
 
-  subroutine fpa_create (this, f, maxv, vtol)
+  subroutine fpa_create (state, f, maxv, vtol)
 
-    type(fpa_state), intent(out) :: this
-    real(kind=dp),   intent(in) :: f(:)
+    type(fpa_state), intent(out) :: state
+    real(kind=rk),   intent(in) :: f(:)
     integer,         intent(in) :: maxv
-    real(kind=dp),   intent(in), optional :: vtol
+    real(kind=rk),   intent(in), optional :: vtol
 
     integer :: n, d1
 
     ASSERT( maxv > 0 )
 
-    this%mvec = maxv
-    n = this%mvec + 1
+    state%mvec = maxv
+    n = state%mvec + 1
     d1 = size(f,dim=1)
-    allocate (this%v(d1,n), this%w(d1,n))
-    allocate (this%h(n,n), this%next(n), this%prev(n))
+    allocate (state%v(d1,n), state%w(d1,n))
+    allocate (state%h(n,n), state%next(n), state%prev(n))
 
     if (present(vtol)) then
-      ASSERT( vtol > 0.0_dp)
-      this%tol = vtol
+      ASSERT( vtol > 0.0_rk )
+      state%tol = vtol
     end if
 
-    this%initialized = .true.
-    this%empty = .true.
+    call fpa_restart (state)
+
+    ASSERT( fpa_defined(state) )
 
   end subroutine fpa_create
 
@@ -205,200 +261,350 @@ contains
  !! FPA_DESTROY
  !!
 
-  subroutine fpa_destroy (this)
+  subroutine fpa_destroy (state)
 
-    type(fpa_state), intent(inout) :: this
+    type(fpa_state), intent(inout) :: state
 
     type(fpa_state) :: default_state
-    
-    ASSERT( this%initialized )
-    deallocate (this%v, this%w, this%h, this%next, this%prev)
-    this = default_state    ! Set default values
+
+    if (_DEFINED_(state%v)) deallocate(state%v)
+    if (_DEFINED_(state%w)) deallocate(state%w)
+    if (_DEFINED_(state%h)) deallocate(state%h)
+    if (_DEFINED_(state%next)) deallocate(state%next)
+    if (_DEFINED_(state%prev)) deallocate(state%prev)
+
+    state = default_state    ! Set default values
 
   end subroutine fpa_destroy
-
- !!
- !! FPA_RESTART
- !!
-
-  subroutine fpa_restart (this)
-
-    type(fpa_state), intent(inout) :: this
-
-    ASSERT( this%initialized )
-
-    this%empty = .true.
-
-  end subroutine fpa_restart
 
  !!
  !! FPA_CORRECTION
  !!
 
-  subroutine fpa_correction (this, f)
+  subroutine fpa_correction (state, f, dp)
 
-    type(fpa_state), intent(inout) :: this
-    real(kind=dp),   intent(inout) :: f(:)
+    type(fpa_state), intent(inout) :: state
+    real(kind=rk),   intent(inout) :: f(:)
+
+    !! Optional dot product procedure to use instead of the intrinsic DOT_PRODUCT.
+    interface
+      pure function dp (x, y)
+        use fpa_kinds
+        real(fpa_rk), intent(in) :: x(:), y(:)
+        real(fpa_rk) :: dp
+      end function dp
+    end interface
+    optional :: dp
 
     ! local variables.
     integer :: i, j, k, new, nvec
-    real(kind=dp) :: s, hkk, hkj, cj, c(this%mvec+1)
+    real(kind=rk) :: s, hkk, hkj, cj, c(state%mvec+1)
 
-    ASSERT( this%initialized )
-    ASSERT( size(f) == size(this%v,dim=1) )
+    ASSERT( fpa_defined(state) )
+    ASSERT( size(f) == size(state%v,dim=1) )
 
-    if (this%empty) then
+   !!!
+   !!! UPDATE THE ACCELERATION SUBSPACE
 
-     !!!
-     !!! INITIAL VECTOR
+    if (state%pending) then
 
-      this%v(:,1) = f      ! Save the (unaccelerated) correction.
-      this%w(:,1) = f      ! Save f to compute the difference on the next call.
+      !! Next function difference w_1.
+      state%w(:,state%first) = state%w(:,state%first) - f
+      if (present(dp)) then
+        s = sqrt(dp(state%w(:,state%first), state%w(:,state%first)))
+      else
+        s = sqrt(dot_product(state%w(:,state%first), state%w(:,state%first)))
+      end if
 
-      !! Initialize the vector linked list.
-      this%first   = 1
-      this%last    = 1
-      this%next(1) = 0
-      this%prev(1) = 0
+      !! If the function difference is 0, we can't update the subspace with
+      !! this data; so we toss it out and continue.  In this case it is likely
+      !! that the outer iterative solution procedure has gone badly awry
+      !! (unless the function value is itself 0), and we merely want to do
+      !! something reasonable here and hope that situation is detected on the
+      !! outside.
+      if (s == 0.0_rk) call fpa_relax (state)
 
-      !! Initialize the free storage linked list.
-      this%free = 2
-      do k = 2, size(this%next)-1
-        this%next(k) = k + 1
-      end do
-      this%next(size(this%next)) = 0
+    end if
 
-      this%empty = .false.
-
-    else
-
-     !!!
-     !!! NEXT FUNCTION DIFFERENCE W
-
-      this%w(:,this%first) = this%w(:,this%first) - f
-      s = 1.0_dp / sqrt(dot_product(this%w(:,this%first), this%w(:,this%first)))
+    if (state%pending) then
 
       !! Normalize w_1 and apply same factor to v_1.
-      this%v(:,this%first) = s * this%v(:,this%first)
-      this%w(:,this%first) = s * this%w(:,this%first)
+      state%v(:,state%first) = state%v(:,state%first) / s
+      state%w(:,state%first) = state%w(:,state%first) / s
 
       !! Update H.
-      k = this%next(this%first)
+      k = state%next(state%first)
       do while (k /= 0)
-        this%h(this%first,k) = dot_product(this%w(:,this%first), this%w(:,k))
-        k = this%next(k)
+        if (present(dp)) then
+          state%h(state%first,k) = dp(state%w(:,state%first), state%w(:,k))
+        else
+          state%h(state%first,k) = dot_product(state%w(:,state%first), state%w(:,k))
+        end if
+        k = state%next(k)
       end do
 
      !!!
      !!! CHOLESKI FACTORIZATION OF H
 
-      this%h(this%first,this%first) = 1.0_dp
-      k = this%next(this%first)
+      state%h(state%first,state%first) = 1.0_rk
+      k = state%next(state%first)
       nvec = 1
 
       do while (k /= 0)
         nvec = nvec + 1
-        if (nvec > this%mvec) then  ! Maintain at most MVEC vectors:
+        if (nvec > state%mvec) then  ! Maintain at most MVEC vectors:
           !! Drop the last vector and update the free storage list.
-          ASSERT( this%last == k )
-          this%next(this%last) = this%free
-          this%free = k
-          this%last = this%prev(k)
-          this%next(this%last) = 0
+          ASSERT( state%last == k )
+          state%next(state%last) = state%free
+          state%free = k
+          state%last = state%prev(k)
+          state%next(state%last) = 0
           exit
         end if
 
-        hkk = 1.0_dp           ! Single stage of Choleski factorization.
-        j = this%first         ! Original matrix kept in lower triangle (unit diagonal).
+        hkk = 1.0_rk           ! Single stage of Choleski factorization.
+        j = state%first         ! Original matrix kept in lower triangle (unit diagonal).
         do while (j /= k)      ! Upper triangle holds the factorization.
-          hkj = this%h(j,k)
-          i = this%first
+          hkj = state%h(j,k)
+          i = state%first
           do while (i /= j)
-            hkj = hkj - this%h(k,i) * this%h(j,i)
-            i = this%next(i)
+            hkj = hkj - state%h(k,i) * state%h(j,i)
+            i = state%next(i)
           end do
-          hkj = hkj / this%h(j,j)
+          hkj = hkj / state%h(j,j)
           hkk = hkk - hkj**2
-          this%h(k,j) = hkj
-          j = this%next(j)
+          state%h(k,j) = hkj
+          j = state%next(j)
         end do
 
-        if (hkk > this%tol**2) then
-          this%h(k,k) = sqrt(hkk)
+        if (hkk > state%tol**2) then
+          state%h(k,k) = sqrt(hkk)
         else  ! The current w nearly lies in the span of the previous vectors.
 
           !! Drop this vector
-          ASSERT( this%prev(k) /= 0 )
-          this%next(this%prev(k)) = this%next(k)
-          if (this%next(k) == 0) then
-            this%last = this%prev(k)
+          ASSERT( state%prev(k) /= 0 )
+          state%next(state%prev(k)) = state%next(k)
+          if (state%next(k) == 0) then
+            state%last = state%prev(k)
           else
-            this%prev(this%next(k)) = this%prev(k)
+            state%prev(state%next(k)) = state%prev(k)
           end if
 
-          this%next(k) = this%free    ! update the free storage list,
-          this%free = k
+          state%next(k) = state%free    ! update the free storage list,
+          state%free = k
 
-          k = this%prev(k)            ! and back-up.
+          k = state%prev(k)            ! and back-up.
           nvec = nvec - 1
 
-        endif
-        k = this%next(k)
+        end if
+        k = state%next(k)
       end do
 
-     !!!
-     !!! PROJECT F ONTO THE SPAN OF THE W VECTORS.
-
-      !! Forward substitution
-      j = this%first
-      do while (j /= 0)
-        cj = dot_product(f, this%w(:,j))
-        i = this%first
-        do while (i /= j)
-          cj = cj - this%h(j,i) * c(i)
-          i = this%next(i)
-        end do
-        c(j) = cj / this%h(j,j)
-        j = this%next(j)
-      end do
-
-      !! Backward substitution
-      j = this%last
-      do while (j /= 0)
-        cj = c(j)
-        i = this%last
-        do while (i /= j)
-          cj = cj - this%h(i,j) * c(i)
-          i = this%prev(i)
-        end do
-        c(j) = cj / this%h(j,j)
-        j = this%prev(j)
-      end do
-
-     !!!
-     !!! ACCELERATED CORRECTION
-
-      ASSERT( this%free /= 0 )
-      new = this%free                    ! Locate storage for the new vectors.
-      this%free = this%next(this%free)
-
-      this%w(:,new) = f                  ! Save the original f for the next call.
-
-      k = this%first                     ! Compute the accelerated correction,
-      do while (k /= 0)
-        f = f - c(k) * this%w(:,k) + c(k) * this%v(:,k)
-        k = this%next(k)
-      end do
-
-      this%v(:,new) = f                  !   and save it for the next call.
-
-      this%prev(new) = 0                 ! Prepend the vectors to the list.
-      this%next(new) = this%first
-      this%prev(this%first) = new
-      this%first = new
+      ASSERT( state%first /= 0 )
+      state%subspace = .true.
 
     end if
 
+    !! Locate storage for the new vectors.
+    ASSERT( state%free /= 0 )
+    new = state%free
+    state%free = state%next(state%free)
+
+    !! Save the original f for the next call.
+    state%w(:,new) = f
+
+   !!!
+   !!! ACCELERATED CORRECTION
+
+    if (state%subspace) then
+
+      !! Project f onto the span of the w vectors: forward substitution
+      j = state%first
+      do while (j /= 0)
+        if (present(dp)) then
+          cj = dp(f, state%w(:,j))
+        else
+          cj = dot_product(f, state%w(:,j))
+        endif
+        i = state%first
+        do while (i /= j)
+          cj = cj - state%h(j,i) * c(i)
+          i = state%next(i)
+        end do
+        c(j) = cj / state%h(j,j)
+        j = state%next(j)
+      end do
+
+      !! Project f onto the span of the w vectors: backward substitution
+      j = state%last
+      do while (j /= 0)
+        cj = c(j)
+        i = state%last
+        do while (i /= j)
+          cj = cj - state%h(i,j) * c(i)
+          i = state%prev(i)
+        end do
+        c(j) = cj / state%h(j,j)
+        j = state%prev(j)
+      end do
+
+      !! The accelerated correction
+      k = state%first
+      do while (k /= 0)
+        f = f - c(k) * state%w(:,k) + c(k) * state%v(:,k)
+        k = state%next(k)
+      end do
+
+    end if
+
+    !! Save the correction for the next call.
+    state%v(:,new) = f
+
+    !! Prepend the new vectors to the list.
+    state%prev(new) = 0
+    state%next(new) = state%first
+    if (state%first == 0) then
+      state%last = new
+    else
+      state%prev(state%first) = new
+    end if
+    state%first = new
+
+    !! The original f and accelerated correction are cached for the next call.
+    state%pending = .true.
+
   end subroutine fpa_correction
+
+ !!
+ !! FPA_RESTART
+ !!
+
+  subroutine fpa_restart (state)
+
+    type(fpa_state), intent(inout) :: state
+
+    integer :: k
+
+    state%subspace = .false.
+    state%pending  = .false.
+
+    !! No vectors are stored.
+    state%first = 0
+    state%last  = 0
+
+    !! Initialize the free storage linked list.
+    state%free  = 1
+    do k = 1, size(state%next)-1
+      state%next(k) = k + 1
+    end do
+    state%next(size(state%next)) = 0
+
+  end subroutine fpa_restart
+
+ !!
+ !! FPA_RELAX
+ !!
+
+  subroutine fpa_relax (state)
+
+    type(fpa_state), intent(inout) :: state
+
+    integer :: new
+
+    if (state%pending) then
+
+      ASSERT( state%first /= 0 )
+
+      !! Drop the pending vectors.
+      new = state%first
+      state%first = state%next(state%first)
+      if (state%first == 0) then
+        state%last = 0
+      else
+        state%prev(state%first) = 0
+      end if
+
+      !! Update the free storage list.
+      state%next(new) = state%free
+      state%free = new
+
+      state%pending = .false.
+
+    end if
+
+  end subroutine fpa_relax
+
+ !!
+ !! FPA_DEFINED
+ !!
+
+  logical function fpa_defined (state)
+
+    type(fpa_state), intent(in) :: state
+
+    integer :: n
+    logical, allocatable :: tag(:)
+
+    CHECKLIST: do
+      fpa_defined = .false.
+      if (state%mvec < 1) exit
+      if (.not._DEFINED_(state%v)) exit
+      if (.not._DEFINED_(state%w)) exit
+      if (any(shape(state%v) /= shape(state%w))) exit
+      if (size(state%v,dim=2) /= state%mvec+1) exit
+      if (.not._DEFINED_(state%h)) exit
+      if (size(state%h,dim=1) /= state%mvec+1) exit
+      if (size(state%h,dim=2) /= state%mvec+1) exit
+      if (.not._DEFINED_(state%next)) exit
+      if (size(state%next) /= state%mvec+1) exit
+      if (.not._DEFINED_(state%prev)) exit
+      if (size(state%prev) /= state%mvec+1) exit
+
+      if (state%tol <= 0.0_rk) exit
+
+      n = size(state%next)
+      if (any(state%next < 0) .or. any(state%next > n)) exit
+      if (any(state%prev < 0) .or. any(state%prev > n)) exit
+      if (state%first < 0 .or. state%first > n) exit
+      if (state%free  < 0 .or. state%free  > n) exit
+
+      !! Tag array: each location is either in the free list or vector list.
+      allocate(tag(size(state%next)))
+      tag = .false.
+
+      !! Check the vector list for consistency.
+      if (state%first == 0) then
+        if (state%last /= 0) exit
+      else
+        n = state%first
+        if (state%prev(n) /= 0) exit
+        tag(n) = .true.
+        do while (state%next(n) /= 0)
+          if (state%prev(state%next(n)) /= n) exit CHECKLIST
+          n = state%next(n)
+          if (tag(n)) exit CHECKLIST
+          tag(n) = .true.
+        end do
+        if (state%last /= n) exit
+      end if
+
+      !! Check the free list.
+      n = state%free
+      do while (n /= 0)
+        if (tag(n)) exit CHECKLIST
+        tag(n) = .true.
+        n = state%next(n)
+      end do
+
+      !! All locations accounted for?
+      if (.not.all(tag)) exit
+
+      fpa_defined = .true.
+      exit
+    end do CHECKLIST
+
+    if (allocated(tag)) deallocate(tag)
+
+  end function fpa_defined
 
 end module fixed_point_accelerator
