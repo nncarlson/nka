@@ -1,0 +1,156 @@
+\documentclass[landscape,footrule,20pt]{foils}
+
+\usepackage[dvipsnames,usenames]{color}
+\usepackage{local}
+\usepackage[pdftex]{graphicx}
+\usepackage[pdftex]{hyperref}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algorithmic}
+
+\newcommand{\xs}{x^\star}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\V}{\mathcal{V}}
+\newcommand{\W}{\mathcal{W}}
+
+\DeclareMathOperator{\Span}{span}
+\DeclareMathOperator{\argmin}{argmin}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+\renewcommand{\algorithmiccomment}[1]{(#1)}
+\DeclareMathOperator{\D}{D}
+\newcommand{\Df}{\D\!\!f}
+\newcommand{\DS}{\displaystyle}
+
+\setlength{\parindent}{0pt}
+\setlength{\partopsep}{0pt}
+\setlength{\parsep}{0pt}
+\setlength{\belowdisplayskip}{0pt}
+
+\LogoOn
+\MyLogo{Neil N. Carlson, Jan 2004}
+
+\begin{document}
+
+\ColorTitle{A Subspace Acceleration Method\\for Fixed Point Iterations}
+\author{Neil N. Carlson \\ Keith Miller}
+%\date{13 Jan 2004}
+\date{}
+\maketitle
+
+\ColorFoil{Fixed Point Iteration}
+
+Fixed point iteration for $\xs=g(\xs)$, $g:\R^m \to \R^m$:
+\begin{quote}\begin{algorithmic}
+\STATE $x_0$ given
+\FOR{$n=0,1,2,\ldots$}
+  \STATE $x_{n+1} = g(x_n)$
+\ENDFOR
+\end{algorithmic}\end{quote}
+$x_n\to\xs$ if $\norm{\xs-x_0}$ and $\norm{\D\!\!g(\xs)}$ are sufficiently small.
+
+Fixed point iteration for $f(\xs)=0$, $f:\R^m \to \R^m$, ($g(x) = x - f(x)$):
+\begin{quote}\begin{algorithmic}
+\STATE $x_0$ given
+\FOR{$n=0,1,2,\ldots$}
+  \STATE $x_{n+1} = x_n - f(x_n)$
+\ENDFOR
+\end{algorithmic}\end{quote}
+$x_n\to\xs$ if $\norm{\xs-x_0}$ and $\norm{\Df(\xs)-I}$ are sufficiently small.
+
+
+\ColorFoil{Modified Newton Methods: An Aside}
+
+Newton's method for $f(\xs)=0$, $f:\R^m \to \R^m$:
+\begin{quote}
+\begin{algorithmic}
+\STATE $x_0$ given
+\FOR{$n=0,1,2,\ldots$}
+  \STATE $x_{n+1} = x_n - [\Df(x_n)]^{-1}f(x_n)$
+\ENDFOR
+\end{algorithmic}
+\end{quote}
+
+Modified Newton's method replaces $\Df(x_n)$ with $P(x_n)$. \\
+Example: $P(x_n)=\Df(\bar{x})$ (constant) for some $\bar{x}$.
+
+Define $h(x)=[P(x)]^{-1} f(x)$.  Then this modified Newton iteration
+is just a fixed point iteration for $h(\xs)=0$.
+
+
+\ColorFoil{Accelerated FP Correction: Motivation}
+
+Rewrite our iteration as
+\begin{quote}\begin{algorithmic}
+\STATE $x_0$ given
+\FOR{$n=0,1,2,\ldots$}
+  \STATE $v_{n+1} = f(x_n)$ \quad\COMMENT{Correction}
+  \STATE $x_{n+1} = x_n - v_{n+1}$
+\ENDFOR
+\end{algorithmic}\end{quote}
+If we were free to choose $v_{n+1}$, how would we choose it?\\
+Perhaps as the solution of
+\begin{equation*}
+  0 = f(x_n-v_{n+1}) \approx f(x_n) - \Df(x_n)\,v_{n+1}.
+\end{equation*}
+FP iteration: Don't know $\Df(x_n)$, so just approximate it by $I$.
+
+But if $\Df\approx$ constant, we \textbf{DO} know something about $\Df$!
+
+
+\ColorFoil{The Accelerated FP Correction}
+
+To generate the correction $v_{n+1}$ we have available:
+\begin{align*}
+  \text{Corrections: }&
+      v_1, \dots, v_n, &
+      V_n &= [v_1 \cdots v_n], & 
+      \V_n &= \Span\{v_1,\dots,v_n\} \\
+  \text{$f$-differences: }&
+      w_1, \dots, w_n, &
+      W_n &= [w_1 \cdots w_n], & 
+      \W_n &= \Span\{w_1,\dots,w_n\}
+\end{align*}
+where $w_j = f(x_{j-1}) - f(x_j)$, ($w_j \approx \Df\,v_j$).
+
+\textbf{Idea:} Split the correction $v_{n+1} = v' + v''$, with $v'\in\V_n$:
+\begin{equation*}
+  0 = f(x_n) - \Df(x_n)\,(v'+v'') \quad\leadsto\quad
+  0 = f(x_n) - \Df\,v' - I\,v''.
+\end{equation*}
+
+\textbf{Accelerated correction} (Carlson \& Miller, SISC '98):
+\begin{equation*}
+  v_{n+1} = \underbrace{V_n z}_{\DS\in\V_n} + 
+    \underbrace{\bigl(f(x_n) - W_n z\bigr)}_{\DS\in\W_n^\perp}
+\end{equation*}
+where $z = \argmin_{\zeta\in\R^n} \norm{f(x_n) - W_n \zeta}$.
+
+\ColorFoil{The Nonlinear Reality}
+
+Of course $\Df$ isn't constant.  In recognition of this fact we consider
+the most recent corrections and differences to be the most reliable.
+\begin{itemize}
+\item Use the $w_j$ in reverse order.
+\item Only use a limited number of the most recent $w_j$.
+\item Drop any $w_j$ that is nearly in the span of the preceding vectors.
+\end{itemize}
+
+
+\ColorFoil{The Accelerated FP Iteration}
+
+To summarize, the accelerated fixed point iteration is
+\begin{quote}\begin{algorithmic}
+\STATE $x := x_0$
+\REPEAT
+  \STATE $v := \operatorname{FPA}\bigl(f(x)\bigr)$
+    \quad\COMMENT{$v := f(x)$ is the unaccelerated correction}
+  \STATE $x := x - v$
+\UNTIL{converged}
+\end{algorithmic}\end{quote}
+The acceleration procedure $\operatorname{FPA}$ is a black box.
+It sits in the loop listening to the sequence of function evaluations
+$f(x_0), f(x_1), \ldots$ and returning the accelerated corrections
+$v_1, v_2, \ldots$
+
+\end{document}
