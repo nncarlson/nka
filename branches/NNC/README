@@ -1,0 +1,24 @@
+Using FPA
+---------
+
+o The module FIXED_POINT_ACCELERATOR is a standalone module.  It makes use
+  of a Fortran version of design-by-contract implemented in the files
+  f90_assert.fpp and f90_assert.f90.  The latter source is not used at all,
+  however, if the module is compiled with the pre-processor variable NDEBUG
+  defined.
+  
+o The programming interface to the module is described in the comments at
+  the beginning of the source file.  A simple description of the acceleration
+  procedure is given in the foils found in the doc directory.  The procedure
+  is also described at the end of the paper by Carlson and Miller,
+  SIAM J. Sci. Comput, 19 (1998) pp 728-765.
+  
+o In the test directory there is a test program which shows how to use the
+  accelerator by solving a nonlinear elliptic equation on a regular 2D mesh.
+  To compile the program, a link to the appropriate machine configuration
+  file in the config directory needs to be made.  For example,
+  
+    ln -s linux-x86-lahey config
+    
+  Output from the program should be compared to that in reference_output
+  to verify the code.
