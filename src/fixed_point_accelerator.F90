@@ -564,7 +564,6 @@ contains
 
       n = size(state%next)
       if (any(state%next < 0) .or. any(state%next > n)) exit
-      if (any(state%prev < 0) .or. any(state%prev > n)) exit
       if (state%first < 0 .or. state%first > n) exit
       if (state%free  < 0 .or. state%free  > n) exit
 
