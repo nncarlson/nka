@@ -1,0 +1,72 @@
+% ==========================================================================
+%   
+%   Custom Macros for latex-talk.tex (with Latex2e + packages)
+%
+% ----------------------------------
+%    
+%   Author: J. David Moulton
+%   Date:   July 6, 1999.
+%
+% ==========================================================================
+
+% ==========================================================================
+%  Custom Page Layout:
+% ---------------------
+
+% ---------------------
+%  Horizontal spacing:
+% ---------------------
+
+%\oddsidemargin=-18pt 
+%\evensidemargin=-18pt
+%\textwidth=720pt
+
+\oddsidemargin=-0.25in
+\evensidemargin=-0.25in
+\textwidth=9.5in
+
+% --------------------
+%  Vertical spacing:
+% --------------------
+
+\topmargin=-0.75in % relative to 1.5in from edge
+%\topmargin=-48pt
+\textheight=6.75in
+%\textheight=490pt
+
+% ==========================================================================
+
+
+% ==========================================================================
+%  Customize Foiltex: 
+% ---------------------
+
+% ---------------------
+%  Logo etc.
+% ---------------------
+%\MyLogo{\raisebox{-8pt}{\includegraphics[scale=0.8]{motorola-labs.pdf}}\hfill}
+%\Restriction{Motorola Confidential Proprietary}
+
+
+\LogoOff
+%\pagestyle{empty}
+\setlength{\foilheadskip}{-27pt}
+
+% ----------------------
+%  Colorized Title:
+% ----------------------
+
+\newcommand{\ColorTitle}[1]{\title{\textcolor{RoyalPurple}{#1}}}
+\newcommand{\ColorFoil}[2][0pt]{\foilhead[#1]{\textcolor{RoyalPurple}{#2\hfill}}}
+%\newcommand{\ColorFoil}[1]{\rotatefoilhead{\textcolor{RoyalPurple}{#1}}}
+
+% -----------------------
+%  Colorized Lists:
+% -----------------------
+
+\renewcommand\labelenumi{\textcolor{blue}{\theenumi.}}
+\renewcommand\labelitemi{\textcolor{Periwinkle}{\small$\m@th\blacksquare$}}
+\renewcommand\labelitemii{\textcolor{Periwinkle}{$\m@th\blacktriangleright$}}
+
+% ==========================================================================
+
