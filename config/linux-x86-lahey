@@ -1,12 +1,17 @@
 ##
-## Lahey lf95 compiler version 6.2 (Linux/x86)
+## Lahey lf95 compiler version 6.2c (Linux/x86)
 ##
 
 F90 = lf95
-F90FLAGS = --o2 -Nnoccprt -I ../src
 
-INC= -I../src
-DEFINES= -DNDEBUG
+ifdef DEBUG
+  F90FLAGS = -g $(DEFINES) $(INC)
+else
+  DEFINES = -DNDEBUG
+  F90FLAGS = --o2 $(DEFINES) $(INC)
+endif
+
+INC= -I ../src
 
 CLEANFILES = *.o *.mod
 

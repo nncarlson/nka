@@ -3,10 +3,15 @@
 ##
 
 F90 = f95
-F90FLAGS = -O $(DEFINES) $(INC)
-#F90FLAGS = $(DEFINES) $(INC)
 
-DEFINES= -DNDEBUG -DSUPPORTS_TR15581
+ifdef DEBUG
+  F90FLAGS = -g -gline $(DEFINES) $(INC)
+else
+  DEFINES = -DNDEBUG
+  F90FLAGS = -O4 -Ounsafe $(DEFINES) $(INC)
+endif
+DEFINES += -DSUPPORTS_TR15581 -w=x95
+
 INC= -I ../src
 
 CLEANFILES = *.o *.mod *.g90
