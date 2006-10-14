@@ -1,8 +1,8 @@
-Using FPA
+Using NKA
 ---------
 
-o The module FIXED_POINT_ACCELERATOR is a standalone module.  It makes use
-  of a Fortran version of design-by-contract implemented in the files
+o The module NONLINEAR_KRYLOV_ACCELERATOR is a standalone module.  It makes
+  use of a Fortran version of design-by-contract implemented in the files
   f90_assert.fpp and f90_assert.f90.  The latter source is not used at all,
   however, if the module is compiled with the pre-processor variable NDEBUG
   defined.
