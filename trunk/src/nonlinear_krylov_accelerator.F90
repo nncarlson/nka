@@ -1,25 +1,27 @@
 !!
-!! The FIXED_POINT_ACCELERATOR Module
+!! NONLINEAR_KRYLOV_ACCELERATOR
 !!
 !! Neil N. Carlson <nnc@newmexico.com>
-!! Last revised 15 Feb 2004; initial F90 version 1996.
+!! Last revised 14 Oct 2006; initial F90 version 1996.
 !!
-!! This module implements the nonlinear subspace acceleration method of Carlson
-!! and Miller [1] for the fixed-point iterative solution of nonlinear equations.
-!! An inexact Newton iteration, in which the Newton correction equation is only
-!! approximately solved (because the Jacobian matrix is approximated and/or the
-!! linear system is not solved exactly), can be interpreted as a fixed-point
-!! iteration for a preconditioned equation.  Using this acceleration method in
-!! such an iterative method results in a type of accelerated inexact Newton (AIN)
-!! scheme.
+!! This module implements the nonlinear Krylov accelerator introduced in [1]
+!! for inexact Newton's (IN) method, in which the correction equation of
+!! Newton's method is only approximately solved because the Jacobian matrix
+!! is approximated and/or the linear system is not solved exactly.  Placed
+!! in the iteration loop, this black-box accelerator listens to the sequence
+!! of inexact corrections and replaces them with accelerated corrections;
+!! the resulting method is a type of accelerated inexact Newton (AIN) method.
+!! Note that an IN iteration is merely a standard fixed point iteration for
+!! a preconditioned system, and so this accelerator is more generally
+!! applicable to fixed point iterations.
 !!
 !! [1] N.N.Carlson and K.Miller, "Design and application of a gradient-
 !!     weighted moving finite element code I: in one dimension", SIAM J.
-!!     Sci. Comput;, 19 (1998), pp. 728-765..
+!!     Sci. Comput;, 19 (1998), pp. 728-765.  See section 9.
 !!
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !!
-!! Copyright (c) 1996, 2004 Neil N. Carlson
+!! Copyright (c) 1996, 2004, 2006  Neil N. Carlson
 !!
 !! Permission is hereby granted, free of charge, to any person obtaining a
 !! copy of this software and associated documentation files (the "Software"),
@@ -43,37 +45,36 @@
 !!
 !! PROGRAMING INTERFACE
 !!
-!! This module provides the derived data type FPA_STATE with private components
+!! This module provides the derived data type NKA_STATE with private components
 !! that encapsulates the entire state of the acceleration procedure, and the
 !! following procedures that operate on variables of that type.  All real
-!! arguments are of kind FPA_RK (double precision).
+!! arguments are of kind NKA_RK (double precision).
 !!
-!!  CALL FPA_CREATE (STATE, F, MAXV, VTOL)
+!!  CALL NKA_CREATE (STATE, VSIZE, MAXV, VTOL)
 !!
-!!    TYPE(FPA_STATE), INTENT(OUT) :: STATE
-!!    REAL(FPA_RK),    INTENT(IN) :: F(:)
+!!    TYPE(NKA_STATE), INTENT(OUT) :: STATE
+!!    INTEGER,         INTENT(IN) :: VSIZE
 !!    INTEGER,         INTENT(IN) :: MAXV
-!!    REAL(FPA_RK),    INTENT(IN), OPTIONAL :: VTOL
+!!    REAL(NKA_RK),    INTENT(IN), OPTIONAL :: VTOL
 !!
 !!    This creates a new state variable STATE capable of using as many as
-!!    MVEC vectors in the acceleration procedure, whose size equals the
-!!    size of the vector argument F.  The optional argument VTOL specifies
-!!    the the vector drop tolerance: a vector is dropped when the sine of
-!!    the angle between the vector the the subspace spanned by the preceding
-!!    vectors is less than this value.  The default is 0.01.  The only use
-!!    of F is to glean its shape; its value is ignored.
+!!    MVEC vectors in the acceleration procedure.  The size of the vectors
+!!    is specified by VSIZE.  The optional argument VTOL specifies the vector
+!!    drop tolerance: a vector is dropped when the sine of the angle between
+!!    the vector the the subspace spanned by the preceding vectors is less
+!!    than this value.  The default is 0.01.
 !!
-!!  CALL FPA_DESTROY (STATE)
+!!  CALL NKA_DESTROY (STATE)
 !!
-!!    TYPE(FPA_STATE), INTENT(INOUT) :: STATE
+!!    TYPE(NKA_STATE), INTENT(INOUT) :: STATE
 !!
 !!    This deallocates all the array components of the state STATE and
 !!    returns it to its default initialization state.
 !!
-!!  CALL FPA_CORRECTION (STATE, F, DP)
+!!  CALL NKA_CORRECTION (STATE, F, DP)
 !!
-!!    TYPE(FPA_STATE), INTENT(INOUT) :: STATE
-!!    REAL(FPA_RK),    INTENT(INOUT) :: F(:)
+!!    TYPE(NKA_STATE), INTENT(INOUT) :: STATE
+!!    REAL(NKA_RK),    INTENT(INOUT) :: F(:)
 !!    OPTIONAL :: DP
 !!
 !!    This call takes the function value F, which would be the correction
@@ -81,7 +82,7 @@
 !!    accelerated correction computed from the subspace stored in STATE.
 !!    This acceleration subspace is updated prior to computing the correction
 !!    using F and previous function value and correction that were cached on
-!!    the preceding call to FPA_CORRECTION (if any).  The input function
+!!    the preceding call to NKA_CORRECTION (if any).  The input function
 !!    value F and the returned correction are then cached in STATE for the
 !!    next call.
 !!
@@ -92,40 +93,40 @@
 !!    are distributed across processors, a global dot product procedure, which
 !!    performs the required communication internally, should be passed as DP
 !!
-!!  CALL FPA_RELAX (STATE)
+!!  CALL NKA_RELAX (STATE)
 !!
-!!    TYPE(FPA_STATE), INTENT(INOUT) :: STATE
+!!    TYPE(NKA_STATE), INTENT(INOUT) :: STATE
 !!
-!!    A call to FPA_CORRECTION caches the passed function value and returned
+!!    A call to NKA_CORRECTION caches the passed function value and returned
 !!    accelerated correction in the state variable for use on the following
-!!    call where they are used to update the acceleration subspace.  FPA_RELAX
+!!    call where they are used to update the acceleration subspace.  NKA_RELAX
 !!    deletes these pending vectors from STATE, so that the next call to
-!!    FPA_CORRECTION will not update the acceleration subspace prior to
+!!    NKA_CORRECTION will not update the acceleration subspace prior to
 !!    computing an accelerated correction.
 !!
 !!    This can be used to carry over the subspace from one nonlinear solve
-!!    to another.  FPA_CORRECTION expects that the passed function value is
+!!    to another.  NKA_CORRECTION expects that the passed function value is
 !!    connected to the preceding correction (if it exists), but this is not
 !!    normally true for the first call in a subsequent nonlinear solve, and
 !!    would result in the subspace being updated with bogus information.  A
-!!    call to FPA_RELAX at the end of a nonlinear solve prevents this from
+!!    call to NKA_RELAX at the end of a nonlinear solve prevents this from
 !!    occuring.  Be very cautious when using this strategy; it may not be
 !!    appropriate.
 !!
-!!  CALL FPA_RESTART (STATE)
+!!  CALL NKA_RESTART (STATE)
 !!
-!!    TYPE(FPA_STATE), INTENT(OUT) :: STATE
+!!    TYPE(NKA_STATE), INTENT(OUT) :: STATE
 !!
 !!    This call flushes the acceleration subspace from STATE, returning STATE
-!!    to its state as returned by FPA_CREATE; the next call to FPA_CORRECTION
+!!    to its state as returned by NKA_CREATE; the next call to NKA_CORRECTION
 !!    will start the process of accumulating a new subspace.  Typical usage
-!!    would be to call FPA_RESTART at the start of each in a series of
+!!    would be to call NKA_RESTART at the start of each in a series of
 !!    nonlinear solves, allowing a single state to be reused and avoiding the
 !!    overhead of repeated creation and destruction of state variables.
 !!
-!!  FPA_DEFINED(STATE)
+!!  NKA_DEFINED(STATE)
 !!
-!!    TYPE(FPA_STATE), INTENT(IN) :: STATE
+!!    TYPE(NKA_STATE), INTENT(IN) :: STATE
 !!
 !!    This logical function returns the value true if STATE is defined;
 !!    otherwise it returns the value false.  Defined means that the components
@@ -138,7 +139,7 @@
 !!
 !!  The following simple example shows the usage of this acceleration
 !!  procedure.  For more details, see the associated documentation.
-!!  Consider an inexact-Newton iteration for solving the nonlinear system
+!!  Consider an inexact Newton iteration for solving the nonlinear system
 !!  f(x) = 0.  Suppose pc(y) is some preconditioning procedure that applies
 !!  some approximation to the inverse of the Jacobian of f(x) to the vector y.
 !!  The original inexact-Newton iteration (equivalent to the fixed point
@@ -150,24 +151,24 @@
 !!      x = x - v
 !!    end do
 !!
-!!  The accelerated inexact-Newton (AIN) iteration would look something like
+!!  The accelerated inexact Newton (AIN) iteration would look something like
 !!
-!!    call fpa_create (state, v, mvec=5)
+!!    call nka_create (state, size(v), mvec=5)
 !!    x = 0
 !!    do <until converged>
 !!      v = pc(f(x))
-!!      call fpa_correction (state, v)
+!!      call nka_correction (state, v)
 !!      x = x - v
 !!    end do
-!!    call fpa_destroy (state)
+!!    call nka_destroy (state)
 !!
 !! The create and destroy can of course be moved outside any nonlinear
 !! solution procedure containing this iteration, and a single state variable
 !! used for repeated calls to the procedure.  This avoids the repeated
 !! allocations and deallocations of arrays associated with the state variable.
-!! In this case, one should either include a call to FPA_RESTART before the
+!! In this case, one should either include a call to NKA_RESTART before the
 !! loop so that each iterative solve starts with clean slate, or include a
-!! call to FPA_RELAX after the loop so that first call to FPA_CORRECTION in
+!! call to NKA_RELAX after the loop so that first call to NKA_CORRECTION in
 !! the next iterative solve doesn't update the acceleration subspace with
 !! bogus information.
 !!
@@ -180,18 +181,18 @@
 # define _DEFINED_ associated
 #endif
 
-module fixed_point_accelerator
+module nonlinear_krylov_accelerator
 
-  use fpa_kinds
+  use nka_kinds
   implicit none
   private
 
-  public :: fpa_create, fpa_destroy, fpa_restart, fpa_correction, fpa_relax, fpa_defined, fpa_rk
+  public :: nka_create, nka_destroy, nka_restart, nka_correction, nka_relax, nka_defined, nka_rk
 
-  integer, parameter :: rk = fpa_rk
+  integer, parameter :: rk = nka_rk
 
 #ifdef SUPPORTS_TR15581
-  type, public :: fpa_state
+  type, public :: nka_state
     private
     logical :: subspace = .false.
     logical :: pending  = .false.
@@ -204,9 +205,9 @@ module fixed_point_accelerator
     !! Linked-list organization of the vector storage.
     integer :: first, last, free
     integer, allocatable :: next(:), prev(:)
-  end type fpa_state
+  end type nka_state
 #else
-  type, public :: fpa_state
+  type, public :: nka_state
     private
     logical :: subspace = .false.
     logical :: pending  = .false.
@@ -220,30 +221,30 @@ module fixed_point_accelerator
     integer :: first, last, free
     integer, pointer :: next(:) => null()
     integer, pointer :: prev(:) => null()
-  end type fpa_state
+  end type nka_state
 #endif SUPPORTS_TR15581
 
 contains
 
  !!
- !! FPA_CREATE
+ !! NKA_CREATE
  !!
 
-  subroutine fpa_create (state, f, maxv, vtol)
+  subroutine nka_create (state, vsize, maxv, vtol)
 
-    type(fpa_state), intent(out) :: state
-    real(kind=rk),   intent(in) :: f(:)
+    type(nka_state), intent(out) :: state
+    integer,         intent(in) :: vsize
     integer,         intent(in) :: maxv
     real(kind=rk),   intent(in), optional :: vtol
 
-    integer :: n, d1
+    integer :: n
 
     ASSERT( maxv > 0 )
+    ASSERT( vsize >= 0 )
 
     state%mvec = maxv
     n = state%mvec + 1
-    d1 = size(f,dim=1)
-    allocate (state%v(d1,n), state%w(d1,n))
+    allocate (state%v(vsize,n), state%w(vsize,n))
     allocate (state%h(n,n), state%next(n), state%prev(n))
 
     if (present(vtol)) then
@@ -251,21 +252,21 @@ contains
       state%tol = vtol
     end if
 
-    call fpa_restart (state)
+    call nka_restart (state)
 
-    ASSERT( fpa_defined(state) )
+    ASSERT( nka_defined(state) )
 
-  end subroutine fpa_create
+  end subroutine nka_create
 
  !!
- !! FPA_DESTROY
+ !! NKA_DESTROY
  !!
 
-  subroutine fpa_destroy (state)
+  subroutine nka_destroy (state)
 
-    type(fpa_state), intent(inout) :: state
+    type(nka_state), intent(inout) :: state
 
-    type(fpa_state) :: default_state
+    type(nka_state) :: default_state
 
     if (_DEFINED_(state%v)) deallocate(state%v)
     if (_DEFINED_(state%w)) deallocate(state%w)
@@ -275,23 +276,23 @@ contains
 
     state = default_state    ! Set default values
 
-  end subroutine fpa_destroy
+  end subroutine nka_destroy
 
  !!
- !! FPA_CORRECTION
+ !! NKA_CORRECTION
  !!
 
-  subroutine fpa_correction (state, f, dp)
+  subroutine nka_correction (state, f, dp)
 
-    type(fpa_state), intent(inout) :: state
+    type(nka_state), intent(inout) :: state
     real(kind=rk),   intent(inout) :: f(:)
 
     !! Optional dot product procedure to use instead of the intrinsic DOT_PRODUCT.
     interface
       pure function dp (x, y)
-        use fpa_kinds
-        real(fpa_rk), intent(in) :: x(:), y(:)
-        real(fpa_rk) :: dp
+        use nka_kinds
+        real(nka_rk), intent(in) :: x(:), y(:)
+        real(nka_rk) :: dp
       end function dp
     end interface
     optional :: dp
@@ -300,7 +301,7 @@ contains
     integer :: i, j, k, new, nvec
     real(kind=rk) :: s, hkk, hkj, cj, c(state%mvec+1)
 
-    ASSERT( fpa_defined(state) )
+    ASSERT( nka_defined(state) )
     ASSERT( size(f) == size(state%v,dim=1) )
 
    !!!
@@ -322,7 +323,7 @@ contains
       !! (unless the function value is itself 0), and we merely want to do
       !! something reasonable here and hope that situation is detected on the
       !! outside.
-      if (s == 0.0_rk) call fpa_relax (state)
+      if (s == 0.0_rk) call nka_relax (state)
 
     end if
 
@@ -473,15 +474,15 @@ contains
     !! The original f and accelerated correction are cached for the next call.
     state%pending = .true.
 
-  end subroutine fpa_correction
+  end subroutine nka_correction
 
  !!
- !! FPA_RESTART
+ !! NKA_RESTART
  !!
 
-  subroutine fpa_restart (state)
+  subroutine nka_restart (state)
 
-    type(fpa_state), intent(inout) :: state
+    type(nka_state), intent(inout) :: state
 
     integer :: k
 
@@ -499,15 +500,15 @@ contains
     end do
     state%next(size(state%next)) = 0
 
-  end subroutine fpa_restart
+  end subroutine nka_restart
 
  !!
- !! FPA_RELAX
+ !! NKA_RELAX
  !!
 
-  subroutine fpa_relax (state)
+  subroutine nka_relax (state)
 
-    type(fpa_state), intent(inout) :: state
+    type(nka_state), intent(inout) :: state
 
     integer :: new
 
@@ -532,21 +533,21 @@ contains
 
     end if
 
-  end subroutine fpa_relax
+  end subroutine nka_relax
 
  !!
- !! FPA_DEFINED
+ !! NKA_DEFINED
  !!
 
-  logical function fpa_defined (state)
+  logical function nka_defined (state)
 
-    type(fpa_state), intent(in) :: state
+    type(nka_state), intent(in) :: state
 
     integer :: n
     logical, allocatable :: tag(:)
 
     CHECKLIST: do
-      fpa_defined = .false.
+      nka_defined = .false.
       if (state%mvec < 1) exit
       if (.not._DEFINED_(state%v)) exit
       if (.not._DEFINED_(state%w)) exit
@@ -598,12 +599,12 @@ contains
       !! All locations accounted for?
       if (.not.all(tag)) exit
 
-      fpa_defined = .true.
+      nka_defined = .true.
       exit
     end do CHECKLIST
 
     if (allocated(tag)) deallocate(tag)
 
-  end function fpa_defined
+  end function nka_defined
 
-end module fixed_point_accelerator
+end module nonlinear_krylov_accelerator

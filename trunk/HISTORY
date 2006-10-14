@@ -1,6 +1,19 @@
 ===============================================================================
-HISTORY                                                  fpa-1.1.1 (2004/12/22)
+HISTORY                                                 nlkain-1.2 (2006/10/14)
 ===============================================================================
+nlkain-1.2 (2006/10/14):
+
+o Name changes: package fpa renamed nlkain, module fixed_point_accelerator
+  renamed nonlinear_krylov_accelerator, and object prefix "fpa_" replaced
+  by "nka_".  The old terminology was a bit arcane, and the new is consistent
+  with Miller's terminology for the accelerator.
+  
+o Modified the interface to NKA_CREATE to take the vector size as an argument
+  in place of a sample vector from which the size would have been gleaned.
+
+o Converted the CVS repository to Subversion, which is now hosted at
+  http://sourceforge.net/projects/nlkain
+
 fpa-1.1.1 (2004/12/22):
 
 o Fixed a bug in fpa_defined introduced in 1.0.0 which would cause a spurious

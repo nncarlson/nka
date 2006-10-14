@@ -1,13 +1,13 @@
 !!
-!!  FPA_UNIT_TEST
+!!  NKA_UNIT_TEST
 !!
-!!  Unit test program for the FIXED_POINT_ACCELERATOR module.
+!!  Unit test program for the NONLINEAR_KRYLOV_ACCELERATOR module.
 !!
 !!  Neil N. Carlson <nnc@newmexico.com> 15 Feb 2004
-!!  Last revised 17 Feb 2004
+!!  Last revised 14 Oct 2006
 !!
-!!  This program exercises the nonlinear subspace acceleration procedure
-!!  implemented by the FIXED_POINT_ACCELERATOR module by applying it to
+!!  This program exercises the nonlinear Krylov acceleration procedure
+!!  implemented by the NONLINEAR_KRYLOV_ACCELERATOR module by applying it to
 !!  the solution of the nonlinear elliptic problem
 !!
 !!      -Div[(a + u)Grad[u]] = q,  u:[0,1]^2 -> R
@@ -28,9 +28,9 @@
 !!  rate are printed for each iteration.
 !!
 
-program fpa_unit_test
+program nka_unit_test
 
-use fixed_point_accelerator
+use nonlinear_krylov_accelerator
 implicit none
 
 integer, parameter :: dp = kind(1.0d0)
@@ -39,7 +39,7 @@ real(kind=dp), parameter :: A = 0.02_dp
 
 type :: system
   integer :: nx, ny
-  type(fpa_state) :: fpa
+  type(nka_state) :: fpa
   real(kind=dp) :: a
   real(kind=dp), pointer :: ax(:,:) => null(), ay(:,:) => null(), ac(:,:) => null(), q(:,:) => null()
 end type system
@@ -52,14 +52,14 @@ sys%nx = N
 sys%ny = N
 sys%a = A
 allocate(sys%ax(sys%nx+1,sys%ny), sys%ay(sys%nx,sys%ny+1), sys%ac(sys%nx,sys%ny), sys%q(sys%nx,sys%ny))
-call fpa_create (sys%fpa, u, maxv=5)
+call nka_create (sys%fpa, size(u), maxv=5)
 h = 1.0_dp / N
 sys%q = h**2
 
 call solve (sys, u, nsweep=2, omega=1.4_dp, use_fpa=.true.)
 call solve (sys, u, nsweep=2, omega=1.4_dp, use_fpa=.false.)
 
-call fpa_destroy(sys%fpa)
+call nka_destroy(sys%fpa)
 
 contains
 
@@ -97,7 +97,7 @@ contains
       rpad = ssor(sys, nsweep, omega, rpad)
       if (use_fpa) then
         rflat = reshape(r, shape(rflat))
-        call fpa_correction (sys%fpa, rflat)
+        call nka_correction (sys%fpa, rflat)
         r = reshape(rflat, shape(r))
       end if
       u = u - r
@@ -205,4 +205,4 @@ contains
     normx = sqrt(sum(x**2))
   end function norm
 
-end program fpa_unit_test
+end program nka_unit_test
