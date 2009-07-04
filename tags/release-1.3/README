@@ -1,0 +1,29 @@
+Using NKA
+---------
+
+Several different versions NONLINEAR_KRYLOV_ACCELERATOR are provided here:
+
+o The directory "src" contains the original Fortran 95 implementation in
+  the standalone module NONLINEAR_KRYLOV_ACCELERATOR.  It makes use of a
+  Fortran version of design-by-contract implemented in the source files
+  f90_assert.fpp and f90_assert.f90.  The latter source is not used at all,
+  however, if the module is compiled with the preprocessor variable NDEBUG
+  defined.
+  
+o The directory "src-C" contains a C implementation of the accelerator in
+  the file nonlinear_krylov_accelerator.c and associated header file.
+  
+The programming interface to each implementation is described in the
+comments at the beginning of the source file.  The interfaces are very
+similar to one another, but are adapted to the language.
+
+A simple description of the acceleration procedure is given in the foils
+found in the doc directory.  The procedure is also described at the end of
+the paper by Carlson and Miller, SIAM J. Sci. Comput, 19 (1998) pp 728-765.
+
+Each directory also contains a test program which shows how to use the
+accelerator by solving a nonlinear elliptic equation on a regular 2D mesh.
+There is a makefile (which will need to be modified for your compiler) that
+will build the test program.  Output from the program should be compared to
+that in reference_output to verify the code.  Note that the test problem
+is the same for each implementation and the results should all be the same.
