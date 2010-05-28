@@ -1,6 +1,10 @@
+o added a C++ implementation that is compatible with Trilinos (tested with
+  version 10.0.2). - M. Berndt 5/28/2010
+
 ===============================================================================
 HISTORY                                                 nlkain-1.3 (2009/7/4)
 ===============================================================================
+
 nlkain-1.3 (2009/7/4):
 
 o Added a C implementation of the accelerator that is closely modeled after

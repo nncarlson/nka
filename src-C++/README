@@ -1,0 +1,25 @@
+
+This directory contains an example code that shows how to use 
+a custon direction factory with NOX. In particular, the 
+direction we use is the NLA direction. 
+
+The files in this directory are:
+
+Makefile (edit to where indicated in the file)
+
+NKA.H                   nonlinear Krylov accelerator class
+NKA.cpp
+
+NKADirection.H          custom direction class that adheres to 
+NKADirection.cpp        the Trilions requirements for such a class
+                        and uses the NKA class
+
+NKADirFactory.H         custom direction factory class that 
+NKADirFactory.cpp       adheres to the Trilions requirements and 
+                        uses the NKADirection class
+
+nlkain-trilinos.cpp     contains a simlpe PDE example (adapted from 
+                        ex2.cpp in the NOX examples in the Didasko 
+                        package, it shows how to use the classes above 
+                        (NKA, NKADirection, NKADirFactory).
+

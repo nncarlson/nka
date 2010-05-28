@@ -12,10 +12,18 @@ o The directory "src" contains the original Fortran 95 implementation in
   
 o The directory "src-C" contains a C implementation of the accelerator in
   the file nonlinear_krylov_accelerator.c and associated header file.
+
+o The directory "src-C++" contains a C++ implementation of the accelerator
+  that is compatible with Trilinos. The example nlkain-trilinos.cpp 
+  contains a simple PDE example (that is adapted from one of the NOX
+  examples in Trilions' Didasko package). This example shows how to use
+  the provided classes with Trilinos.
   
 The programming interface to each implementation is described in the
 comments at the beginning of the source file.  The interfaces are very
-similar to one another, but are adapted to the language.
+similar to one another, but are adapted to the language. The programming
+interface for the C++ classes is explained in the example 
+src-C++/nlkain-trilinos.cpp and to some extend in src-C++/README.
 
 A simple description of the acceleration procedure is given in the foils
 found in the doc directory.  The procedure is also described at the end of
