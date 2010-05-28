@@ -1,6 +1,7 @@
-//   NONLINEAR_KRYLOV_ACCELERATOR
+//   NONLINEAR_KRYLOV_ACCELERATOR - C++/Trilinos implementation
 
 //   Neil N. Carlson <neil.n.carlson@gmail.com>
+//   Markus Berndt <markus.berndt@gmail.com>
 
 //   This code implements the nonlinear Krylov accelerator introduced in [1]
 //   for inexact Newton's (IN) method, where the correction equation of
@@ -14,7 +15,7 @@
 //   applicable to fixed point iterations.
 
 //   This code is a straightforward translation of the original Fortran 95
-//   implementation into C.
+//   implementation into C++.
 
 //   [1] N.N.Carlson and K.Miller, "Design and application of a gradient-
 //       weighted moving finite element code I: in one dimension", SIAM J.
@@ -22,7 +23,7 @@
 
 //   ************************************************************************
 
-//   Copyright (c) 2009  Neil N. Carlson
+//   Copyright (c) 2010  Neil N. Carlson, Markus Berndt
 
 //   Permission is hereby granted, free of charge, to any person obtaining a
 //   copy of this software and associated documentation files (the "Software"),
@@ -41,12 +42,6 @@
 //   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 //   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 //   DEALINGS IN THE SOFTWARE.
-
-
-//   The following code was adapted from Neil Carlson's  NLKAIN code that is on 
-//   Sourceforge, see http://sourceforge.net/projects/nlkain/   
-//   Markus Berndt, CCS-2
-
 
 
 
