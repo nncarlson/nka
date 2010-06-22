@@ -1,7 +1,6 @@
-//   NONLINEAR_KRYLOV_ACCELERATOR - C++/Trilinos implementation
+//   NONLINEAR_KRYLOV_ACCELERATOR
 
 //   Neil N. Carlson <neil.n.carlson@gmail.com>
-//   Markus Berndt <markus.berndt@gmail.com>
 
 //   This code implements the nonlinear Krylov accelerator introduced in [1]
 //   for inexact Newton's (IN) method, where the correction equation of
@@ -15,7 +14,7 @@
 //   applicable to fixed point iterations.
 
 //   This code is a straightforward translation of the original Fortran 95
-//   implementation into C++/Trilinos.
+//   implementation into C.
 
 //   [1] N.N.Carlson and K.Miller, "Design and application of a gradient-
 //       weighted moving finite element code I: in one dimension", SIAM J.
@@ -23,7 +22,7 @@
 
 //   ************************************************************************
 
-//   Copyright (c) 2010  Neil N. Carlson, Markus Berndt
+//   Copyright (c) 2009  Neil N. Carlson
 
 //   Permission is hereby granted, free of charge, to any person obtaining a
 //   copy of this software and associated documentation files (the "Software"),
@@ -44,11 +43,17 @@
 //   DEALINGS IN THE SOFTWARE.
 
 
+//   The following code was adapted from Neil Carlson's  NLKAIN code that is on 
+//   Sourceforge, see http://sourceforge.net/projects/nlkain/   
+//   Markus Berndt, CCS-2
+
+
+
 #ifndef __NKA_H__
 #define __NKA_H__
 
 #include "NOX.H"
-#include "NOX_Epetra_Vector.H"
+#include "NOX_Abstract_Vector.H"
 
 #define NKATRUE 1
 #define NKAFALSE 0
@@ -58,11 +63,11 @@ class nka {
  
 public:
 
-  nka (int, double, const NOX::Epetra::Vector&);
+  nka (int, double, const NOX::Abstract::Vector&);
   ~nka();
   void nka_relax();
   void nka_restart ();
-  void nka_correction (NOX::Epetra::Vector&, const NOX::Epetra::Vector&);
+  void nka_correction (NOX::Abstract::Vector&, const Teuchos::RCP<NOX::Abstract::Vector>);
 
 
 private:
@@ -72,9 +77,9 @@ private:
   int mvec;           // maximum number of subspace vectors 
   double vtol;        // vector drop tolerance 
 
-  NOX::Epetra::Vector **v;  // subspace storage
+  Teuchos::RCP<NOX::Abstract::Vector> *v;  // subspace storage
   
-  NOX::Epetra::Vector **w;  // function difference vectors 
+  Teuchos::RCP<NOX::Abstract::Vector> *w;  // function difference vectors 
   
   double **h;   // matrix of w vector inner products */
 

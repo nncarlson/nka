@@ -397,12 +397,13 @@ int main( int argc, char **argv )
   // we need a GlobalData variable fo initialize the 
   // Direction factory
   Teuchos::RCP<NOX::GlobalData> gd = Teuchos::rcp(new NOX::GlobalData(nlParamsPtr));
-  
+  // Need a NOX::Epetra::Vector for constructors
+  NOX::Epetra::Vector noxInitGuess(InitialGuess, NOX::DeepCopy);  
+
   // create our direction factory
   Teuchos::RCP<NOX::Direction::UserDefinedFactory> dir_factory 
-    = Teuchos::rcp(new NKADirFactory(gd, nlParams, InitialGuess));
+    = Teuchos::rcp(new NKADirFactory(gd, nlParams, noxInitGuess));
   dirParams.set("User Defined Direction Factory", dir_factory);
-
 
   // we need a linear solver to associate a preconditioner to it
   // we will then only use the preconditioner through the applyRightPreconditioning
@@ -422,8 +423,7 @@ int main( int argc, char **argv )
     Teuchos::rcp(new NOX::Epetra::LinearSystemAztecOO(printParams, lsParams,
   					       iReq, iPrec, MLPrec, InitialGuess)); 
 
-  // Need a NOX::Epetra::Vector for constructor
-  NOX::Epetra::Vector noxInitGuess(InitialGuess, NOX::DeepCopy);
+
   
   Teuchos::RCP<NOX::Epetra::Group> grpPtr = 
     Teuchos::rcp(new NOX::Epetra::Group(printParams, 
