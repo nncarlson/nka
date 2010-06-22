@@ -1,7 +1,6 @@
-//   NONLINEAR_KRYLOV_ACCELERATOR - C++/Trilinos implementation
+//   NONLINEAR_KRYLOV_ACCELERATOR
 
 //   Neil N. Carlson <neil.n.carlson@gmail.com>
-//   Markus Berndt <markus.berndt@gmail.com>
 
 //   This code implements the nonlinear Krylov accelerator introduced in [1]
 //   for inexact Newton's (IN) method, where the correction equation of
@@ -15,7 +14,7 @@
 //   applicable to fixed point iterations.
 
 //   This code is a straightforward translation of the original Fortran 95
-//   implementation into C++.
+//   implementation into C.
 
 //   [1] N.N.Carlson and K.Miller, "Design and application of a gradient-
 //       weighted moving finite element code I: in one dimension", SIAM J.
@@ -23,7 +22,7 @@
 
 //   ************************************************************************
 
-//   Copyright (c) 2010  Neil N. Carlson, Markus Berndt
+//   Copyright (c) 2009  Neil N. Carlson
 
 //   Permission is hereby granted, free of charge, to any person obtaining a
 //   copy of this software and associated documentation files (the "Software"),
@@ -44,23 +43,29 @@
 //   DEALINGS IN THE SOFTWARE.
 
 
+//   The following code was adapted from Neil Carlson's  NLKAIN code that is on 
+//   Sourceforge, see http://sourceforge.net/projects/nlkain/   
+//   Markus Berndt, CCS-2
+
+
+
 
 #include "NKA.H"
 
 ///////////////////////////////////////////////////////////////////////
 
-nka::nka (int mvec_, double vtol_, const NOX::Epetra::Vector &initvec)
+nka::nka (int mvec_, double vtol_, const NOX::Abstract::Vector &initvec)
 {
   mvec = max(mvec_,1); // we cannot have mvex < 1
   vtol = vtol_; 
   
-  v = new NOX::Epetra::Vector* [mvec+1];
-  w = new NOX::Epetra::Vector* [mvec+1];
+  v = new Teuchos::RCP<NOX::Abstract::Vector> [mvec+1];
+  w = new Teuchos::RCP<NOX::Abstract::Vector> [mvec+1];
   
   for (int i=0; i<mvec+1; i++) 
     {
-      v[i] = new NOX::Epetra::Vector(initvec, NOX::ShapeCopy);
-      w[i] = new NOX::Epetra::Vector(initvec, NOX::ShapeCopy);
+      v[i] = initvec.clone(NOX::ShapeCopy);
+      w[i] = initvec.clone(NOX::ShapeCopy);
     }
   
   h =  new double* [mvec+1];
@@ -78,12 +83,12 @@ nka::nka (int mvec_, double vtol_, const NOX::Epetra::Vector &initvec)
 
 nka::~nka()
 {
-  for (int i=0; i<mvec + 1; i++)
-    {
-      delete v[i];
-      delete w[i];
-      delete h[i];
-    }
+  //for (int i=0; i<mvec + 1; i++)
+  //{
+      //delete v[i];
+      //delete w[i];
+      //delete h[i];
+  //}
   delete v;
   delete w;
   delete h;
@@ -141,26 +146,25 @@ void nka::nka_restart ()
 
 ///////////////////////////////////////////////////////////////////////
 
-void nka::nka_correction (NOX::Epetra::Vector &dir, 
-			  const NOX::Epetra::Vector &f)
+void nka::nka_correction (NOX::Abstract::Vector &dir, 
+			  const Teuchos::RCP<NOX::Abstract::Vector> f)
 {
   int i, j, k, nvec, new_v;
   double s, hkk, hkj, cj;
   double  *hk, *hj, *c;
   
-  NOX::Epetra::Vector *vp, *wp;
-  NOX::Epetra::Vector ff(f, NOX::DeepCopy);
-  
+  Teuchos::RCP<NOX::Abstract::Vector> vp, wp;
+  Teuchos::RCP<NOX::Abstract::Vector> ff = (*f.get()).clone(NOX::DeepCopy);
+
   // UPDATE THE ACCELERATION SUBSPACE
-  
-  
+
   if (pending) 
     {
       // next_v function difference w_1 
       wp = w[first_v];
       
       
-      wp->update(-1.0, ff, 1.0);
+      wp->update(-1.0, *ff.get(), 1.0);
       
       s = wp->norm();
       s = sqrt(s);
@@ -272,7 +276,7 @@ void nka::nka_correction (NOX::Epetra::Vector &dir,
   free_v = next_v[free_v];
   
   // Save the original f for the next_v call. 
-  *w[new_v] = ff;
+  *w[new_v] = *ff;
   
   if (subspace) 
     {
@@ -283,7 +287,7 @@ void nka::nka_correction (NOX::Epetra::Vector &dir,
       // forward substitution 
       for (j = first_v; j != NKAEOL; j = next_v[j]) 
 	{
-	  cj = ff.innerProduct(*w[j]);
+	  cj = (*ff).innerProduct(*w[j]);
 	  
 	  for (i = first_v; i != j; i = next_v[i]) 
 	    {
@@ -307,13 +311,13 @@ void nka::nka_correction (NOX::Epetra::Vector &dir,
 	  wp = w[k];
 	  vp = v[k];
 
-	  ff.update(c[k], *vp, -c[k], *wp, 1.0); 
+	  (*ff).update(c[k], *vp, -c[k], *wp, 1.0); 
 	}
       delete c;
     }
   
   // Save the accelerated correction for the next_v call. 
-  *v[new_v] = ff;
+  v[new_v] = ff;
   
   
   // Prepend the new vectors to the list.
@@ -333,7 +337,8 @@ void nka::nka_correction (NOX::Epetra::Vector &dir,
   pending = NKATRUE;
   
   // pass back the accelerated correction vector
-  dir = ff; 
+  dir = *ff;
+
 };
 
 

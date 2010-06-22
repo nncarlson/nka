@@ -1,5 +1,5 @@
 # Edit this to point to your installation of Trilinos.
-TRILINOS_ROOT=/home/berndt/Trilinos/trilinos-10.2.0-serial
+TRILINOS_ROOT=/home/berndt/Code/Trilinos/install/trilinos-10.2.2
 
 # There is no need to edit below this line.
 include $(TRILINOS_ROOT)/include/Makefile.export.NOX
