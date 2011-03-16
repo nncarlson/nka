@@ -1,0 +1,226 @@
+\documentclass{beamer}
+
+%\mode<handout>
+%{
+  \usetheme{Madrid}
+%}
+
+\usefonttheme[onlymath]{serif}
+
+\usepackage{amsmath}
+
+%\usepackage{amssymb}
+%\usepackage{amscd}
+%\usepackage{rotating}
+
+\usepackage[english]{babel}
+% or whatever
+
+%\usepackage[latin1]{inputenc}
+% or whatever
+
+%\usepackage{times}
+%\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+
+\usepackage{algorithmic}
+\usepackage{fancyvrb}
+\usepackage{underscore}
+
+%macros
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\V}{\mathcal{V}}
+\newcommand{\W}{\mathcal{W}}
+\DeclareMathOperator{\Span}{span}
+\DeclareMathOperator{\argmin}{argmin}
+\newcommand{\norm}[1]{\lVert#1\rVert}
+\renewcommand{\algorithmiccomment}[1]{(#1)}
+\DeclareMathOperator{\D}{D}
+\newcommand{\Df}{\D\!f}
+\newcommand{\DS}{\displaystyle}
+
+%\usepackage[orientation=landscape,size=custom,width=16,height=9,scale=0.5,debug]{beamerposter}
+\newcommand{\truchas}{\textsc{Truchas}}
+
+
+
+
+\title[]{An Accelerated Fixed Point Iteration Scheme: \\ The Nonlinear Krylov Method}
+\author[Carlson-Miller]{%
+  Neil N. Carlson, {\small\texttt{nnc@lanl.gov}} \\
+  Keith Miller, {\small\texttt{kmiller@math.berkeley.edu}}}
+
+
+\date{}
+
+%\pgfdeclareimage[height=1.0cm]{logo.pdf}{logo}
+%\logo{\pgfuseimage{logo.pdf}}
+
+
+\begin{document}
+
+\frame{
+  \titlepage
+}
+
+%\begin{frame}
+%  \frametitle{Outline}
+%  \tableofcontents
+%  % You might wish to add the option [pausesections]
+%\end{frame}
+
+
+\frame{
+  \frametitle{FP Iteration For $f(u)=0$}
+  Fixed point iteration for $f(u)=0$, $f:\R^m \to \R^m$:
+  \begin{quote}\begin{algorithmic}
+  \STATE $u_0$ given
+  \FOR{$n=0,1,2,\ldots$}
+    \STATE $u_{n+1} = u_n - f(u_n)$
+  \ENDFOR
+  \end{algorithmic}\end{quote}
+\begin{itemize}
+\item
+  $u_n\to u$ if $\norm{u-u_0}$ and $\norm{\Df(u)-I}$ are sufficiently small.
+\item
+  Rapid convergence when $\Df\approx I$.
+\end{itemize}
+}
+
+
+\frame{
+\frametitle{Newton's Method as a Preconditioned FP Iteration}
+
+Newton's method for $g(u)=0$, $g:\R^m \to \R^m$:
+\begin{quote}\begin{algorithmic}
+\STATE $u_0$ given
+\FOR{$n=0,1,2,\ldots$}
+  \STATE $u_{n+1} = u_n - {\D\!g(u_n)}^{-1}g(u_n)$
+\ENDFOR
+\end{algorithmic}\end{quote}
+
+If we define $f(u)={\D\!g(u)}^{-1}g(u)$, then Newton's method
+is precisely a FP iteration for the equivalent problem $f(u)=0$.
+\begin{itemize}
+\item At the solution $u$, $\Df=I$.
+\end{itemize}
+}
+
+\frame{
+\frametitle{Accelerated FP Correction: Motivation}
+
+The fixed point iteration for $f(u)=0$,
+\begin{quote}\begin{algorithmic}
+\FOR{$n=0,1,2,\ldots$}
+  \STATE $v_{n+1} = f(u_n)$
+  \STATE $u_{n+1} = u_n - v_{n+1}$
+\ENDFOR
+\end{algorithmic}\end{quote}
+generates a sequence of corrections $v_1, v_2, \dots$ \\
+At step $n+1$ how might we choose a better correction $v_{n+1}$?
+Perhaps as the solution of the Newton correction equation
+\[ 0 = f(u_n) - \Df(u_n)\,v_{n+1} \approx f(u_{n+1}).\]
+\begin{itemize}\vspace{-.25in}
+\item
+  FPI view: Don't know $\Df(u_n)$, so approximate it by $I$. \\
+  Indeed, FPI converges best when $\Df\approx I$.
+\item
+  But, if $\Df\approx$ constant, we do know something about $\Df$! \\
+  We have the $f$-values $f(u_0), f(u_1), \dots, f(u_n)$ available.
+\end{itemize}
+}
+
+
+\frame{
+\frametitle{Accelerated FP Correction: Motivation (cont.)}
+
+To generate the correction $v_{n+1}$ we have available:
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item
+  Corrections: $v_1,\dots,v_n$,
+  \[ V_n=\Span\{v_1,\dots,v_n\}, \quad V_n=[v_1 \cdots v_n] \]
+\item
+  $f$-differences: $w_1,\dots,w_n$, where $w_j=f(u_{j-1})-f(u_j)$,
+  \[ \W_n=\Span\{w_1,\dots,w_n\} \quad W_n=[w_1 \cdots w_n] \]
+\end{itemize}
+Note that $w_j\approx\Df\,v_j$, so that we know (approximately)
+the action of $\Df$ on $\V_n$.
+
+
+}
+
+
+\frame{
+\frametitle{The Accelerated FP Correction}
+
+\textbf{Idea:} Split the correction $v_{n+1} = v' + v''$, with $v'\in\V_n$,
+for which we know the action of $\Df$:
+\begin{equation*}
+  0 = f(u_n) - \Df(u_n)\,(v'+v'') \quad\leadsto\quad
+  0 = f(u_n) - \Df\,v' - I\,v''.
+\end{equation*}
+For $\Df\,v''$ we invoked the FP iteration viewpoint.
+
+\bigskip
+\textbf{Accelerated correction} (Carlson \& Miller, SISC '98) \\
+Choose $v'$ such that $\Df\,v'$ is the $l_2$ projection of $f(u_n)$ into $\W_n$:
+\begin{equation*}
+  v_{n+1} = \underbrace{V_n z}_{\DS\in\V_n} + 
+    \underbrace{\bigl(f(x_n) - W_n z\bigr)}_{\DS\in\W_n^\perp}
+\end{equation*}
+where $z = \argmin_{\zeta\in\R^n} \norm{f(u_n) - W_n \zeta}$.
+\begin{itemize}
+\item
+  We are not required to use all the available subspace info.
+\end{itemize}
+}
+
+
+\frame{
+\frametitle{The Nonlinear Reality}
+
+Of course $\Df$ isn't constant.  In recognition of this fact we consider
+the most recent corrections and differences to be the most reliable.
+\begin{itemize}
+\item
+  Use the $v_j$ in reverse order.
+\item
+  Use only a limited number of the most recent $v_j$.
+\item 
+  Drop any $v_j$ that is nearly in the span of the preceding vectors
+  (in the reverse sense).
+\end{itemize}
+}
+
+
+\frame{
+\frametitle{The Nonlinear Krylov (NLK) Method}
+
+To summarize, the accelerated fixed point iteration is
+\begin{quote}\begin{algorithmic}
+\STATE $u \leftarrow u_0$
+\REPEAT
+  \STATE $v \leftarrow \operatorname{NKA}\bigl(f(u)\bigr)$
+  \STATE $u \leftarrow u - v$
+\UNTIL{converged}
+\end{algorithmic}\end{quote}
+\begin{itemize}
+\item
+  The black-box procedure $\operatorname{NKA()}$ returns the accelerated
+  correction just defined.  Formally it is a function of all the 
+  previous corrections and previous $f$ values, but it accumulates
+  this info over the course of the iteration.
+\item
+  $v \leftarrow f(u)$ is the unaccelerated correction.
+\end{itemize}
+}
+
+
+%\frame{
+%\frametitle{The NLKAIN library}
+%
+%}
+
+\end{document}
+
