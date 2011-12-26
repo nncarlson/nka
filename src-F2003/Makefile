@@ -5,7 +5,7 @@
 
 # Your Fortran compiler and flags to use in optimize and debug modes.
 F90 = nagfor
-OPT_FLAGS = -O3 -Ounsafe -f2003
+OPT_FLAGS = -O3 -Ounsafe -f2003 #-mtrace
 DBG_FLAGS = -g -gline -f2003
 
 # You shouldn't need to change anything below #################################
@@ -18,7 +18,7 @@ else
 endif
 
 PROGS= nka_f95_test
-OBJ= f90_assert.o nlk_accel_type.o nka_f95_test.o
+OBJ= f90_assert.o nka_type.o nka_f95_test.o
 
 nka_f95_test: $(OBJ)
 	$(F90) $(F90FLAGS) -o $@ $(OBJ)

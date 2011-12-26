@@ -52,7 +52,8 @@
 
 program nka_f95_test
 
-  use nlk_accel_type
+  !use nlk_accel_type
+  use nka_type
   implicit none
 
   integer,  parameter :: dp = kind(1.0d0)
@@ -63,9 +64,40 @@ program nka_f95_test
     integer :: nx, ny
     real(dp) :: a, hx, hy
     real(dp), pointer :: ax(:,:) => null(), ay(:,:) => null(), ac(:,:) => null(), q(:,:) => null()
-    type(nlk_accel) :: nka
+    !type(nlk_accel) :: nka
+    type(nka) :: accel
   end type system
+  
+  call run
 
+!  type(system) :: sys
+!  real(dp) :: u(N*N), omega
+!  integer :: nsweep
+!
+!  !! Initialize the system
+!  sys%a = A
+!  sys%nx = N
+!  sys%ny = N
+!  sys%hx = 1.0_dp / sys%nx
+!  sys%hy = 1.0_dp / sys%ny
+!  allocate(sys%ax(sys%nx+1,sys%ny), sys%ay(sys%nx,sys%ny+1), sys%ac(sys%nx,sys%ny))
+!  allocate(sys%q(sys%nx,sys%ny))
+!  call sys%nka%create (size(u), mvec=5)
+!  sys%q = sys%hx*sys%hy
+!
+!  nsweep = 2
+!  omega = 1.4_dp
+!
+!  !call solve (sys, nsweep, omega, use_nka=.true., sol=u)
+!  !call solve (sys, nsweep, omega, use_nka=.false., sol=u)
+!
+!  !call sys%nka%destroy()
+!  
+!  !deallocate(sys%ax, sys%ay, sys%ac, sys%q)
+
+contains
+
+  subroutine run
   type(system) :: sys
   real(dp) :: u(N*N), omega
   integer :: nsweep
@@ -78,7 +110,8 @@ program nka_f95_test
   sys%hy = 1.0_dp / sys%ny
   allocate(sys%ax(sys%nx+1,sys%ny), sys%ay(sys%nx,sys%ny+1), sys%ac(sys%nx,sys%ny))
   allocate(sys%q(sys%nx,sys%ny))
-  call sys%nka%create (size(u), mvec=5)
+  !call sys%nka%create (size(u), mvec=5)
+  call sys%accel%init (size(u), mvec=5)
   sys%q = sys%hx*sys%hy
 
   nsweep = 2
@@ -87,9 +120,10 @@ program nka_f95_test
   call solve (sys, nsweep, omega, use_nka=.true., sol=u)
   call solve (sys, nsweep, omega, use_nka=.false., sol=u)
 
-  call sys%nka%destroy()
-
-contains
+  !call sys%nka%destroy()
+  
+  deallocate(sys%ax, sys%ay, sys%ac, sys%q)
+  end subroutine run
 
   subroutine solve (sys, nsweep, omega, use_nka, sol)
 
@@ -123,7 +157,8 @@ contains
 
     do itr = 1, MAXITR
       call ssor_pc (sys, nsweep, omega, r)
-      if (use_nka) call sys%nka%correction (r)
+      !if (use_nka) call sys%nka%correction (r)
+      if (use_nka) call sys%accel%accel_update (r)
       u = u - reshape(r,shape(u))
 
       call residual (sys, upad, r)
