@@ -3,6 +3,29 @@ This directory contains an example code that shows how to use
 a custon direction factory with NOX. In particular, the 
 direction we use is the NLA direction. 
 
+The code in this directory was used to generate the numerical
+tests that are presented in the paper
+
+@article{Calef2013,
+title = "Nonlinear Krylov Acceleration Applied to a Discrete Ordinates Formulation of the k-Eigenvalue Problem",
+journal = "Journal of Computational Physics",
+volume = "",
+number = "0",
+pages = " - ",
+year = "2013",
+note = "",
+issn = "0021-9991",
+doi = "10.1016/j.jcp.2012.12.024",
+url = "http://www.sciencedirect.com/science/article/pii/S0021999112007553",
+author = "Matthew T. Calef and Erin D. Fichtl and James S. Warsa and Markus Berndt and Neil N. Carlson",
+keywords = "Anderson Acceleration",
+keywords = "Boltzmann equation",
+keywords = "Boltzmann k-eigenvalue problem",
+keywords = "Broyden",
+keywords = "JFNK"
+}
+
+
 The files in this directory are:
 
 Makefile (edit to where indicated in the file)
