@@ -11,6 +11,17 @@
 #include "NOX_GlobalData.H"
 #include "NOX_Utils.H"
 
+//
+//  This class inplements Broyden's method in the
+//  framework of Trilinos NOX user defined direction
+//  class.
+//  The implementation follows the description of
+//  Broyden's method in Chapter 7 of C.T. Kelley's
+//  book 'Iterative Methods for Linear and Nonlinear
+//  Equations.
+//
+
+
 class BroydenSMDirection : public NOX::Direction::Generic {
 
 public:

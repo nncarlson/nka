@@ -7,19 +7,30 @@ The files in this directory are:
 
 Makefile (edit to where indicated in the file)
 
-NKA.H                   nonlinear Krylov accelerator class
+NKA.H                    nonlinear Krylov accelerator class
 NKA.cpp
 
-NKADirection.H          custom direction class that adheres to 
-NKADirection.cpp        the Trilions requirements for such a class
-                        and uses the NKA class
+NKADirection.H           custom direction class that adheres to 
+NKADirection.cpp         the Trilions requirements for such a class
+                         and uses the NKA class
 
-NKADirFactory.H         custom direction factory class that 
-NKADirFactory.cpp       adheres to the Trilions requirements and 
-                        uses the NKADirection class
+NKADirFactory.H          custom direction factory class that 
+NKADirFactory.cpp        adheres to the Trilions requirements and 
+                         uses the NKADirection class
+
+BroydenSMDirection.cpp   custom direction class that adheres to
+BroydenSMDirection.hpp   the Trilions requirements for such a class
+                         implements Broyden's method as described in
+                         C.T. Kelley's book "Iterative Methods for
+                         Linear and Nonlinear Equations"
+
+BroydenSMDirFactory.cpp  custom direction factory class that
+BroydenSMDirFactory.hpp  adheres to the Trilions requirements and
+                         uses the BroydenSMDirection class
 
 nlkain-trilinos.cpp     contains a simlpe PDE example (adapted from 
                         ex2.cpp in the NOX examples in the Didasko 
                         package, it shows how to use the classes above 
-                        (NKA, NKADirection, NKADirFactory).
+                        (NKA, NKADirection, NKADirFactory, BroydenSMDirection,
+                        and BroydenSMDirFactory).
 
