@@ -1,6 +1,5 @@
-#ifndef __NKADIRECTION_H__
-#define __NKADIRECTION_H__
-
+#ifndef __BroydenSMDIRECTION_H__
+#define __BroydenSMDIRECTION_H__
 
 #include "NOX_Common.H"
 
@@ -12,18 +11,14 @@
 #include "NOX_GlobalData.H"
 #include "NOX_Utils.H"
 
-#include "NKA.H"
-
-
-class NKADirection : public NOX::Direction::Generic {
-
+class BroydenSMDirection : public NOX::Direction::Generic {
 
 public:
 
-  NKADirection(const Teuchos::RCP<NOX::GlobalData>&, 
+  BroydenSMDirection(const Teuchos::RCP<NOX::GlobalData>&, 
 	       Teuchos::ParameterList&, const NOX::Abstract::Vector&);
 
-  ~NKADirection();
+  ~BroydenSMDirection();
 
   bool reset (const Teuchos::RCP<NOX::GlobalData>&, 
 	      Teuchos::ParameterList&);
@@ -47,11 +42,18 @@ private:
 
   Teuchos::ParameterList *paramPtr; 
 
-  nka *state;
-  bool precond;
-
   Teuchos::RCP<NOX::Abstract::Vector> tmpVecPtr;
 
+  int nmax;     // maximum number of Broyden iterations before a restart
+  int n;        // number of currenr Broyden vectors 
+  int itc;      // count the nonlinear iterations
+  bool precond; // whether to use preconditioning
+
+  std::list<Teuchos::RCP<NOX::Abstract::Vector> > sptr;
+  std::list<double> snormsq;
+
+  const NOX::Abstract::Vector& vec;
+  
 };
 
 #endif

@@ -54,10 +54,11 @@
 
 ///////////////////////////////////////////////////////////////////////
 
-nka::nka (int mvec_, double vtol_, const NOX::Abstract::Vector &initvec)
+nka::nka (int mvec_, double vtol_, double beta_, const NOX::Abstract::Vector &initvec):
+  beta(beta_), vtol(vtol_)
 {
+
   mvec = max(mvec_,1); // we cannot have mvex < 1
-  vtol = vtol_; 
   
   v = new Teuchos::RCP<NOX::Abstract::Vector> [mvec+1];
   w = new Teuchos::RCP<NOX::Abstract::Vector> [mvec+1];
@@ -302,12 +303,15 @@ void nka::nka_correction (NOX::Abstract::Vector &dir,
 	  c[j] = cj / h[j][j];
 	}
       // The accelerated correction 
+
+      (*ff).scale(beta);
+
       for (k = first_v; k != NKAEOL; k = next_v[k]) 
 	{
 	  wp = w[k];
 	  vp = v[k];
 
-	  (*ff).update(c[k], *vp, -c[k], *wp, 1.0); 
+	  (*ff).update(c[k], *vp, -beta*c[k], *wp, 1.0); 
 	}
       delete c;
     }

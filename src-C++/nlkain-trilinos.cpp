@@ -9,8 +9,14 @@
 //
 // derived from  packages/didasko/nox/ex2.cpp
 //
-// uses NOX and implements NLKAIN as a user supplied direction
+// uses NOX and implements NKA or Broyden as a user supplied direction
 // uses ML for preconditioning
+
+// define either USENKA or USEBROYDEN
+#define USENKA
+// #define USEBROYDEN
+
+
 
 #ifdef HAVE_MPI
 #include "mpi.h"
@@ -48,6 +54,9 @@
 #include "NKA.H"
 #include "NKADirection.H"
 #include "NKADirFactory.H"
+
+#include "BroydenSMDirection.hpp"
+#include "BroydenSMDirFactory.hpp"
 
 #include "Teuchos_ENull.hpp"
 #include <ml_MultiLevelPreconditioner.h>
@@ -387,11 +396,27 @@ int main( int argc, char **argv )
   Teuchos::ParameterList &dirParams = nlParams.sublist("Direction");
   dirParams.set("Method", "User Defined");
 
+
+#if defined(USENKA)
+
   // these are parameters that the NKA direction class
   // will look at
   Teuchos::ParameterList &mydirParams = nlParams.sublist("NKADirection");
   mydirParams.set("maxv", 10);
   mydirParams.set("vtol", 1e-8);
+  mydirParams.set("beta", 1.0);
+
+#elif defined(USEBROYDEN)
+
+  // these are parameters that the BroydenSM direction class
+  // will look at
+  Teuchos::ParameterList &mydirParams = nlParams.sublist("BroydenSMDirection");
+  mydirParams.set("nmax", 10);
+  mydirParams.set("precondition", true);
+
+#else
+#error "Either USENKA or USEBROYDEN must be defined"
+#endif
 
 
   // we need a GlobalData variable fo initialize the 
@@ -400,10 +425,24 @@ int main( int argc, char **argv )
   // Need a NOX::Epetra::Vector for constructors
   NOX::Epetra::Vector noxInitGuess(InitialGuess, NOX::DeepCopy);  
 
+
+#if defined(USENKA)
+
   // create our direction factory
   Teuchos::RCP<NOX::Direction::UserDefinedFactory> dir_factory 
     = Teuchos::rcp(new NKADirFactory(gd, nlParams, noxInitGuess));
   dirParams.set("User Defined Direction Factory", dir_factory);
+
+#elif defined(USEBROYDEN)
+
+  // create our direction factory
+  Teuchos::RCP<NOX::Direction::UserDefinedFactory> dir_factory 
+    = Teuchos::rcp(new BroydenSMDirFactory(gd, nlParams, noxInitGuess));
+  dirParams.set("User Defined Direction Factory", dir_factory);  
+
+#else 
+#error "Either USENKA or USEBROYDEN must be defined"
+#endif
 
   // we need a linear solver to associate a preconditioner to it
   // we will then only use the preconditioner through the applyRightPreconditioning

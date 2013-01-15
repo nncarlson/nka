@@ -6,11 +6,12 @@ NKADirection::NKADirection(const Teuchos::RCP<NOX::GlobalData>& gd,
 			   const NOX::Abstract::Vector& initvec)
 {
   // get the parameters the parameter list
-  
+
   int mvec    = param.get<int>("maxv", 10);
-  double vtol = param.get<double>("vtol", 1e-4);
-  
-  state = new nka (mvec, vtol, initvec);
+  double vtol = param.get<double>("vtol", 1e-3);
+  double beta = param.get<double>("beta",1.0);
+
+  state = new nka (mvec, vtol, beta, initvec);
   
   reset(gd, param);
   
@@ -29,6 +30,8 @@ bool NKADirection::reset(const Teuchos::RCP<NOX::GlobalData> &gd,
   globalDataPtr = gd;
   utils = gd->getUtils();
   paramPtr = &param;
+
+  precond =  param.get<bool>("precondition", true);
   
   state->nka_restart();
   
@@ -42,7 +45,7 @@ bool NKADirection::compute (NOX::Abstract::Vector &dir,
 			    const NOX::Solver::Generic  &solver)
 {
   NOX::Abstract::Group::ReturnType status;
-  
+
   // evaluate the nonlinear functional
   status = soln.computeF();
   if (status != NOX::Abstract::Group::Ok) {
@@ -55,14 +58,22 @@ bool NKADirection::compute (NOX::Abstract::Vector &dir,
   Teuchos::RCP<NOX::Abstract::Vector> precond_fptr 
     = (*fptr).clone(NOX::ShapeCopy);
 
-  status 
-    = soln.applyRightPreconditioning(false,
-				     paramPtr->sublist("Linear Solver"), 
-				     *fptr, *precond_fptr);
-  
-  if (status != NOX::Abstract::Group::Ok) {
-    throwError("compute", "Unable to apply preconditioner"); 
-  } 
+
+  if (precond) 
+    {
+      status 
+	= soln.applyRightPreconditioning(false,
+					 paramPtr->sublist("Linear Solver"), 
+					 *fptr, *precond_fptr);
+      
+      if (status != NOX::Abstract::Group::Ok) {
+	throwError("compute", "Unable to apply preconditioner"); 
+      } 
+    }
+  else
+    {
+      *precond_fptr = *fptr;
+    }
 
   state->nka_correction(dir, precond_fptr);
   dir.scale(-1.0);
