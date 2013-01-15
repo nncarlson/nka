@@ -63,7 +63,7 @@ class nka {
  
 public:
 
-  nka (int, double, const NOX::Abstract::Vector&);
+  nka (int, double, double, const NOX::Abstract::Vector&);
   ~nka();
   void nka_relax();
   void nka_restart ();
@@ -75,7 +75,8 @@ private:
   int subspace;       // boolean: a nonempty subspace 
   int pending;        // contains pending vectors -- boolean 
   int mvec;           // maximum number of subspace vectors 
-  double vtol;        // vector drop tolerance 
+  const double vtol;  // vector drop tolerance 
+  const double beta;  // set = 1 for standard NKA, = -1 for NKA_{-1}
 
   Teuchos::RCP<NOX::Abstract::Vector> *v;  // subspace storage
   
