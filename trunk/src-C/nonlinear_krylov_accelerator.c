@@ -206,7 +206,7 @@ NKA nka_create (int vsize, int maxv, double vtol,
   assert(vsize >= 0);
   assert(vtol > 0.0);
 
-  state = malloc(sizeof(*state));
+  state = (NKA)malloc(sizeof(*state));
 
   state->vsize = vsize;
   state->mvec  = maxv;
@@ -219,26 +219,26 @@ NKA nka_create (int vsize, int maxv, double vtol,
   }
 
   n = maxv + 1;
-  state->v = malloc(n*sizeof(double *));
-  state->v[0] = malloc(n * vsize * sizeof(double));
+  state->v = (double**)malloc(n*sizeof(double *));
+  state->v[0] = (double*)malloc(n * vsize * sizeof(double));
   for (j = 1; j < n; j++) {
     state->v[j] = state->v[j-1] + vsize;
   }
 
-  state->w = malloc(n*sizeof(double *));
-  state->w[0] = malloc(n * vsize * sizeof(double));
+  state->w = (double**)malloc(n*sizeof(double *));
+  state->w[0] = (double*)malloc(n * vsize * sizeof(double));
   for (j = 1; j < n; j++) {
     state->w[j] = state->w[j-1] + vsize;
   }
 
-  state->h = malloc(n * sizeof(double *));
-  state->h[0] = malloc(n * n * sizeof(double));
+  state->h = (double**)malloc(n * sizeof(double *));
+  state->h[0] = (double*)malloc(n * n * sizeof(double));
   for (j = 1; j < n; j++) {
     state->h[j] = state->h[j-1] + n;
   }
 
-  state->next = malloc(n * sizeof(int));
-  state->prev = malloc(n * sizeof(int));
+  state->next = (int*)malloc(n * sizeof(int));
+  state->prev = (int*)malloc(n * sizeof(int));
 
   nka_restart(state);
 
@@ -272,7 +272,7 @@ void nka_destroy (NKA state)
 
 void nka_correction (NKA state, double *f)
 {
-  int i, j, k, nvec, new;
+  int i, j, k, nvec, newv;
   double s, hkk, hkj, cj;
   double *v, *w, *hk, *hj, *c;
 
@@ -378,15 +378,15 @@ void nka_correction (NKA state, double *f)
 
   /* Locate storage for the new vectors. */
   assert(state->free != EOL);
-  new = state->free;
+  newv = state->free;
   state->free = state->next[state->free];
 
   /* Save the original f for the next call. */
   for (j = 0; j < state->vsize; j++)
-    state->w[new][j] = f[j];
+    state->w[newv][j] = f[j];
 
   if (state->subspace) {
-    c = malloc((state->mvec + 1) * sizeof(*c));
+    c = (double*)malloc((state->mvec + 1) * sizeof(*c));
     assert(c != NULL);
     /* Project f onto the span of the w vectors: */
     /* forward substitution */
@@ -415,17 +415,17 @@ void nka_correction (NKA state, double *f)
 
   /* Save the accelerated correction for the next call. */
   for (j = 0; j < state->vsize; j++)
-    state->v[new][j] = f[j];
+    state->v[newv][j] = f[j];
 
   /* Prepend the new vectors to the list. */
-  state->prev[new] = EOL;
-  state->next[new] = state->first;
+  state->prev[newv] = EOL;
+  state->next[newv] = state->first;
   if (state->first == EOL) {
-    state->last = new;
+    state->last = newv;
   } else {
-    state->prev[state->first] = new;
+    state->prev[state->first] = newv;
   }
-  state->first = new;
+  state->first = newv;
 
   /* The original f and accelerated correction are cached for the next call. */
   state->pending = TRUE;
@@ -453,12 +453,12 @@ void nka_restart (NKA state)
 
 void nka_relax (NKA state)
 {
-  int new;
+  int newv;
 
   if (state->pending) {
     /* Drop the initial slot where the pending vectors are stored. */
     assert(state->first >= 0);
-    new = state->first;
+    newv = state->first;
     state->first = state->next[state->first];
     if (state->first == EOL) {
       state->last = EOL;
@@ -466,8 +466,8 @@ void nka_relax (NKA state)
       state->prev[state->first] = EOL;
     }
     /* Update the free storage list. */
-    state->next[new] = state->free;
-    state->free = new;
+    state->next[newv] = state->free;
+    state->free = newv;
     state->pending = FALSE;
   }
 }
