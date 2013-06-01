@@ -3,12 +3,14 @@
 !!
 !! Neil N. Carlson <neil.n.carlson@gmail.com>
 !!
-!! This module implements the nonlinear Krylov accelerator introduced in [1]
-!! for fixed point or Picard iterations.  Placed in the iteration loop, this
-!! black-box accelerator listens to the sequence of solution updates and
-!! replaces them with accelerated updates.
+!! This module implements the nonlinear Krylov accelerator (NKA) introduced
+!! in [1] for fixed point or Picard iterations.  Placed in the iteration loop,
+!! this black-box accelerator listens to the sequence of solution updates and
+!! replaces them with accelerated updates.  More generally, NKA can accelerate
+!! typical quasi-Newton iterations, which can usually be viewed as a fixed
+!! point iteration for a preconditioned function.
 !!
-!! This is a Fortran 2003 adaptation of the original Fortran 95 version that
+!! This is a Fortran 2008 adaptation of the original Fortran 95 version that
 !! implements the methods as type bound procedures.
 !!
 !! [1] N.N.Carlson and K.Miller, "Design and application of a gradient-
@@ -110,10 +112,10 @@
 !!
 !!  The following simple example shows the usage of this acceleration
 !!  procedure.  For more details, see the associated documentation.
-!!  Consider an inexact Newton iteration for solving the nonlinear system
+!!  Consider a quasi-Newton iteration for solving the nonlinear system
 !!  F(x) = 0.  Suppose PC(y) is some preconditioning procedure that applies
 !!  some approximation to the inverse of the Jacobian of F(x) to the vector y.
-!!  The original inexact-Newton iteration (equivalent to the fixed point
+!!  The original quasi-Newton iteration (equivalent to the fixed point
 !!  iteration for PC(F(x)) = 0) would look something like
 !!
 !!    x = 0
@@ -134,7 +136,7 @@
 !!    end do
 !!
 !! The INIT call can be moved outside any nonlinear solution procedure
-!! containing this iteration, and a single nka-type variable used for repeated
+!! containing this iteration, and a single NKA-type variable used for repeated
 !! calls to the procedure. This avoids the repeated allocation and deallocation
 !! of memory associated with the accelerator.  In this case, one should either
 !! include a call to RESTART before the loop so that each iterative solve starts
@@ -147,10 +149,9 @@
 
 module nka_type
 
+  use,intrinsic :: iso_fortran_env, only: r8 => real64
   implicit none
   private
-
-  integer, parameter :: r8 = selected_real_kind(15) ! 8-byte IEEE float
 
   type, public :: nka
     private
@@ -168,23 +169,23 @@ module nka_type
     integer :: first, last, free
     integer, allocatable :: next(:), prev(:)
   contains
-    procedure :: init
-    procedure :: set_vec_tol
-    procedure :: set_dot_prod
-    procedure :: vec_len
-    procedure :: num_vec
-    procedure :: max_vec
-    procedure :: vec_tol
-    procedure :: real_kind
-    procedure :: accel_update
-    procedure :: relax
-    procedure :: restart
-    procedure :: defined
+    procedure :: init => nka_init
+    procedure :: set_vec_tol => nka_set_vec_tol
+    procedure :: set_dot_prod => nka_set_dot_prod
+    procedure :: vec_len => nka_vec_len
+    procedure :: num_vec => nka_num_vec
+    procedure :: max_vec => nka_max_vec
+    procedure :: vec_tol => nka_vec_tol
+    procedure :: real_kind => nka_real_kind
+    procedure :: accel_update => nka_accel_update
+    procedure :: relax => nka_relax
+    procedure :: restart => nka_restart
+    procedure :: defined => nka_defined
   end type nka
 
 contains
 
-  subroutine init (this, vlen, mvec)
+  subroutine nka_init (this, vlen, mvec)
     class(nka), intent(out) :: this
     integer, intent(in) :: vlen
     integer, intent(in) :: mvec
@@ -197,63 +198,63 @@ contains
     n = mvec + 1
     allocate(this%v(vlen,n), this%w(vlen,n))
     allocate(this%h(n,n), this%next(n), this%prev(n))
-    call restart (this)
-    ASSERT(defined(this))
-  end subroutine init
+    call nka_restart (this)
+    ASSERT(nka_defined(this))
+  end subroutine nka_init
 
-  subroutine set_vec_tol (this, vtol)
+  subroutine nka_set_vec_tol (this, vtol)
     class(nka), intent(inout) :: this
     real(r8), intent(in) :: vtol
     ASSERT(vtol > 0.0_r8)
     this%vtol = vtol
-  end subroutine set_vec_tol
+  end subroutine nka_set_vec_tol
 
-  subroutine set_dot_prod (this, dot_prod)
+  subroutine nka_set_dot_prod (this, dot_prod)
     class(nka), intent(inout) :: this
     procedure(dp), pointer :: dot_prod
     ASSERT(associated(dot_prod))
     this%dp => dot_prod
-  end subroutine set_dot_prod
+  end subroutine nka_set_dot_prod
 
   real(r8) function dp (x, y)
     real(r8), intent(in) :: x(:), y(:)
     dp = dot_product(x, y)
   end function dp
 
-  integer function num_vec (this)
+  integer function nka_num_vec (this)
     class(nka), intent(in) :: this
     integer :: k
-    num_vec = 0
+    nka_num_vec = 0
     k = this%first
     do while (k /= 0)
-      num_vec = num_vec + 1
+      nka_num_vec = nka_num_vec + 1
       k = this%next(k)
     end do
-    if (this%pending) num_vec = num_vec - 1
-  end function num_vec
+    if (this%pending) nka_num_vec = nka_num_vec - 1
+  end function nka_num_vec
 
-  integer function max_vec (this)
+  integer function nka_max_vec (this)
     class(nka), intent(in) :: this
-    max_vec = this%mvec
-  end function max_vec
+    nka_max_vec = this%mvec
+  end function nka_max_vec
 
-  integer function vec_len (this)
+  integer function nka_vec_len (this)
     class(nka), intent(in) :: this
-    vec_len = this%vlen
-  end function vec_len
+    nka_vec_len = this%vlen
+  end function nka_vec_len
 
-  real(r8) function vec_tol (this)
+  real(r8) function nka_vec_tol (this)
     class(nka), intent(in) :: this
-    vec_tol = this%vtol
-  end function vec_tol
+    nka_vec_tol = this%vtol
+  end function nka_vec_tol
 
-  integer function real_kind (this)
+  integer function nka_real_kind (this)
     class(nka), intent(in) :: this
-    real_kind = kind(this%h)
-  end function real_kind
+    nka_real_kind = kind(this%h)
+  end function nka_real_kind
 
 
-  subroutine accel_update (this, f)
+  subroutine nka_accel_update (this, f)
 
     class(nka), intent(inout) :: this
     real(r8),   intent(inout) :: f(:)
@@ -262,7 +263,7 @@ contains
     integer :: i, j, k, new, nvec
     real(r8) :: s, hkk, hkj, cj, c(this%mvec+1)
 
-    ASSERT(defined(this))
+    ASSERT(nka_defined(this))
     ASSERT(size(f) == size(this%v,dim=1))
 
    !!!
@@ -280,7 +281,7 @@ contains
       !! (unless the function value is itself 0), and we merely want to do
       !! something reasonable here and hope that situation is detected on the
       !! outside.
-      if (s == 0.0_r8) call relax (this)
+      if (s == 0.0_r8) call nka_relax (this)
 
     end if
 
@@ -424,10 +425,10 @@ contains
     !! The original f and accelerated update are cached for the next call.
     this%pending = .true.
 
-  end subroutine accel_update
+  end subroutine nka_accel_update
 
 
-  subroutine restart (this)
+  subroutine nka_restart (this)
     class(nka), intent(inout) :: this
     integer :: k
     this%subspace = .false.
@@ -441,10 +442,10 @@ contains
       this%next(k) = k + 1
     end do
     this%next(size(this%next)) = 0
-  end subroutine restart
+  end subroutine nka_restart
 
 
-  subroutine relax (this)
+  subroutine nka_relax (this)
     class(nka), intent(inout) :: this
     integer :: new
     if (this%pending) then
@@ -462,10 +463,10 @@ contains
       this%free = new
       this%pending = .false.
     end if
-  end subroutine relax
+  end subroutine nka_relax
 
 
-  logical function defined (this)
+  logical function nka_defined (this)
 
     class(nka), intent(in) :: this
 
@@ -473,7 +474,7 @@ contains
     logical, allocatable :: tag(:)
 
     CHECKLIST: do
-      defined = .false.
+      nka_defined = .false.
       if (this%mvec < 1) exit
       if (.not.allocated(this%v)) exit
       if (.not.allocated(this%w)) exit
@@ -526,12 +527,12 @@ contains
       !! All locations accounted for?
       if (.not.all(tag)) exit
 
-      defined = .true.
+      nka_defined = .true.
       exit
     end do CHECKLIST
 
     if (allocated(tag)) deallocate(tag)
 
-  end function defined
+  end function nka_defined
 
 end module nka_type

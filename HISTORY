@@ -1,6 +1,16 @@
 o added a C++ implementation that is compatible with Trilinos (tested with
   version 10.0.2). - M. Berndt 5/28/2010
 
+o Added a modern, object-oriented Fortran (2008) version.
+
+o The interfaces to the C, Fortran 95, and Fortran 2008 versions were
+  harmonized.
+  
+o Added a simple cmake build system for each of the versions (except C++).
+
+o The Fortran 2008 example program was extended to allow various problem
+  and method parameters to be varied from the command line.
+
 ===============================================================================
 HISTORY                                                 nlkain-1.3 (2009/7/4)
 ===============================================================================

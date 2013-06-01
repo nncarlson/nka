@@ -1,7 +1,7 @@
 !!
-!!  NKA_F95_TEST
+!!  NKA_EXAMPLE
 !!
-!!  Unit test program for the NONLINEAR_KRYLOV_ACCELERATOR module.
+!!  Example/test program for the NKA_TYPE module.
 !!
 !!  Neil N. Carlson <neil.n.carlson@gmail.com> 15 Feb 2004
 !!  Last revised 4 Jul 2009
@@ -50,9 +50,9 @@
 !! DEALINGS IN THE SOFTWARE.
 !!
 
-program nka_f95_test
+program nka_example
 
-  use nonlinear_krylov_accelerator
+  use nka_type
   implicit none
 
   integer,  parameter :: dp = kind(1.0d0)
@@ -63,7 +63,7 @@ program nka_f95_test
     integer :: nx, ny
     real(dp) :: a, hx, hy
     real(dp), pointer :: ax(:,:) => null(), ay(:,:) => null(), ac(:,:) => null(), q(:,:) => null()
-    type(nka_state) :: nka
+    type(nka) :: nka
   end type system
 
   type(system) :: sys
@@ -78,7 +78,7 @@ program nka_f95_test
   sys%hy = 1.0_dp / sys%ny
   allocate(sys%ax(sys%nx+1,sys%ny), sys%ay(sys%nx,sys%ny+1), sys%ac(sys%nx,sys%ny))
   allocate(sys%q(sys%nx,sys%ny))
-  call nka_create (sys%nka, size(u), maxv=5)
+  call nka_init (sys%nka, size(u), mvec=5)
   sys%q = sys%hx*sys%hy
 
   nsweep = 2
@@ -87,7 +87,7 @@ program nka_f95_test
   call solve (sys, nsweep, omega, use_nka=.true., sol=u)
   call solve (sys, nsweep, omega, use_nka=.false., sol=u)
 
-  call nka_destroy (sys%nka)
+  call nka_delete (sys%nka)
 
 contains
 
@@ -123,7 +123,7 @@ contains
 
     do itr = 1, MAXITR
       call ssor_pc (sys, nsweep, omega, r)
-      if (use_nka) call nka_correction (sys%nka, r)
+      if (use_nka) call nka_accel_update (sys%nka, r)
       u = u - reshape(r,shape(u))
 
       call residual (sys, upad, r)
@@ -234,4 +234,4 @@ contains
     l2norm = sqrt(sum(x**2))
   end function l2norm
 
-end program nka_f95_test
+end program nka_example
