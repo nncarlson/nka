@@ -27,9 +27,8 @@
  *  rate are printed for each iteration.
  *
  *  This code is a straightforward translation of the original Fortran test
- *  program into C.  Use that code as a reference to understand the lower-level
- *  details of this code -- C is not particularly well-suited for this purpose
- *  and as a result the C code is fairly inscrutible.
+ *  program into C, and the resulting code is fairly inscrutible.  Use the
+ *  Fortran code as a reference to understand the details of this code.
  *
  *******************************************************************************
  *
@@ -93,7 +92,7 @@ int main (void)
   sys.ay = malloc(sys.nx*(sys.ny+1)*sizeof(double));
   sys.ac = malloc(sys.nx*sys.ny*sizeof(double));
   sys.q  = malloc(sys.nx*sys.ny*sizeof(double));
-  sys.nka = nka_create(sys.nx*sys.ny, 5, 0.01, NULL);
+  sys.nka = nka_init(sys.nx*sys.ny, 5, 0.01, NULL);
   /* uniform unit source */
   for (i = 0; i < sys.nx*sys.ny; i++) sys.q[i] = sys.hx*sys.hy;
 
@@ -101,7 +100,7 @@ int main (void)
   u = malloc(sys.nx*sys.ny*sizeof(double));
   solve(&sys, nsweep, omega, 1, u);
   solve(&sys, nsweep, omega, 0, u);
-  nka_destroy(sys.nka);
+  nka_delete(sys.nka);
 
   return 0;
 }
@@ -137,7 +136,7 @@ void solve (SYSTEM *sys, int nsweep, double omega, int use_nka, double *sol)
 
   for (itr = 1; itr <= MAXITR; itr++) {
     ssor_pc(sys, nsweep, omega, r);
-    if (use_nka) nka_correction(sys->nka, r);
+    if (use_nka) nka_accel_update(sys->nka, r);
 
     /* solution iterate update: u_{i+1} := u_{i} - v */
     t = r;

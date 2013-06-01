@@ -1,0 +1,25 @@
+No NKA acceleration
+-------------------
+% nka_example
+
+Iter Residual Norm    Reduction    Rate
+...
+367:  4.920818E-05    9.842E-07   0.963
+
+
+With NKA acceleration using up to 5 vectors
+-------------------------------------------
+% nka_example --nka-vec 5
+
+Iter Residual Norm    Reduction    Rate
+ ...
+ 26:  3.052167E-05    6.104E-07   0.577
+
+
+Use 4 SSOR sweeps (instead of default 2)
+----------------------------------------
+% nka_example --sweeps 4 --nka-vec 5
+
+Iter Residual Norm    Reduction    Rate
+ ...
+ 20:  4.652602E-05    9.305E-07   0.499

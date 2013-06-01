@@ -1,37 +1,41 @@
 Using NKA
 ---------
 
-Several different versions NONLINEAR_KRYLOV_ACCELERATOR are provided here:
+Several different versions of the nonlinear Krylov accelerator (NKA) are
+are provided here.  The directory "src-F95" contains the original Fortran 95
+implementation.  A newer object-oriented version implemented in modern Fortran
+can be found in "src-F08". That version requires a compiler that has a fairly
+complete implementation of the 2003 standard with some minor features from the
+2008 standard.  At this time the NAG (version 5.3) and Intel (version 13.1)
+compilers are known to work; gfortran versions up through 4.7.2 and Intel
+versions prior to 13.0 are known NOT to work.  The directory "src-C" contains
+a C version.
 
-o The directory "src" contains the original Fortran 95 implementation in
-  the standalone module NONLINEAR_KRYLOV_ACCELERATOR.  It makes use of a
-  Fortran version of design-by-contract implemented in the source files
-  f90_assert.fpp and f90_assert.f90.  The latter source is not used at all,
-  however, if the module is compiled with the preprocessor variable NDEBUG
-  defined.
+The source for these versions (F95, F08, C) consists of a single source file
+that can be easily incorporated into your own software project.  They all
+feature essentially the same interface, which is documented in the comments
+at the top of the source file.
+
+Each of these versions also contains an example program that illustrates how
+to use NKA by solving a nonlinear elliptic equation on a regular 2D grid.
+There is a simple cmake-based build system.  A simple "cmake ." in the sub-
+directory, followed by "make" should build the nka_example program.  If cmake
+has problems finding your Fortran compiler, try setting the FC environment
+variable to the path to it.  For a test, output from nka_example should be
+compared to that in reference_output.  The F08/nka_example program is a bit
+more elaborate, allowing several problem and method parameters to be set on
+the command line.  Use the "--help" option to get usage information.  You
+can get a better idea of how NKA behaves by experimenting with this program.
+
+The directory "src-C++" contains a somewhat different version of NKA.  This
+is a C++ implementation (by Markus Berndt) that designed to work with the NOX
+package from Trilinos (http://trilinos.sandia.gov).  See the README file in
+that directory for more details.  This is the code that was used to generate
+the numerical results presented in the paper "Nonlinear Krylov Acceleration
+Applied to a Discrete Ordinates Formulation of the k-Eigenvalue Problem",
+J. Comp. Phys., 238 (2013).
   
-o The directory "src-C" contains a C implementation of the accelerator in
-  the file nonlinear_krylov_accelerator.c and associated header file.
-
-o The directory "src-C++" contains a C++ implementation of the accelerator
-  that is compatible with Trilinos. The example nlkain-trilinos.cpp 
-  contains a simple PDE example (that is adapted from one of the NOX
-  examples in Trilions' Didasko package). This example shows how to use
-  the provided classes with Trilinos.
-  
-The programming interface to each implementation is described in the
-comments at the beginning of the source file.  The interfaces are very
-similar to one another, but are adapted to the language. The programming
-interface for the C++ classes is explained in the example 
-src-C++/nlkain-trilinos.cpp and to some extend in src-C++/README.
-
-A simple description of the acceleration procedure is given in the foils
-found in the doc directory.  The procedure is also described at the end of
-the paper by Carlson and Miller, SIAM J. Sci. Comput, 19 (1998) pp 728-765.
-
-Each directory also contains a test program which shows how to use the
-accelerator by solving a nonlinear elliptic equation on a regular 2D mesh.
-There is a makefile (which will need to be modified for your compiler) that
-will build the test program.  Output from the program should be compared to
-that in reference_output to verify the code.  Note that the test problem
-is the same for each implementation and the results should all be the same.
+A simple description of NKA is given in the foils found in the doc directory.
+The procedure is also described at the end of the paper by Carlson and Miller
+SIAM J. Sci. Comput, 19 (1998) pp 728-765; also Miller, J. Comp. Appl. Math.,
+183 (2005), pp 275-287.
