@@ -1,0 +1,59 @@
+
+This directory contains an example code that shows how to use 
+a custon direction factory with NOX. In particular, the 
+direction we use is the NLA direction. 
+
+The code in this directory was used to generate the numerical
+tests that are presented in the paper
+
+@article{Calef2013,
+title = "Nonlinear Krylov Acceleration Applied to a Discrete Ordinates Formulation of the k-Eigenvalue Problem",
+journal = "Journal of Computational Physics",
+volume = "",
+number = "0",
+pages = " - ",
+year = "2013",
+note = "",
+issn = "0021-9991",
+doi = "10.1016/j.jcp.2012.12.024",
+url = "http://www.sciencedirect.com/science/article/pii/S0021999112007553",
+author = "Matthew T. Calef and Erin D. Fichtl and James S. Warsa and Markus Berndt and Neil N. Carlson",
+keywords = "Anderson Acceleration",
+keywords = "Boltzmann equation",
+keywords = "Boltzmann k-eigenvalue problem",
+keywords = "Broyden",
+keywords = "JFNK"
+}
+
+
+The files in this directory are:
+
+Makefile (edit to where indicated in the file)
+
+NKA.H                    nonlinear Krylov accelerator class
+NKA.cpp
+
+NKADirection.H           custom direction class that adheres to 
+NKADirection.cpp         the Trilions requirements for such a class
+                         and uses the NKA class
+
+NKADirFactory.H          custom direction factory class that 
+NKADirFactory.cpp        adheres to the Trilions requirements and 
+                         uses the NKADirection class
+
+BroydenSMDirection.cpp   custom direction class that adheres to
+BroydenSMDirection.hpp   the Trilions requirements for such a class
+                         implements Broyden's method as described in
+                         C.T. Kelley's book "Iterative Methods for
+                         Linear and Nonlinear Equations"
+
+BroydenSMDirFactory.cpp  custom direction factory class that
+BroydenSMDirFactory.hpp  adheres to the Trilions requirements and
+                         uses the BroydenSMDirection class
+
+nlkain-trilinos.cpp     contains a simlpe PDE example (adapted from 
+                        ex2.cpp in the NOX examples in the Didasko 
+                        package, it shows how to use the classes above 
+                        (NKA, NKADirection, NKADirFactory, BroydenSMDirection,
+                        and BroydenSMDirFactory).
+
