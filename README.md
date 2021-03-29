@@ -54,13 +54,6 @@ parameters to be set on the command line. Use the `--help` option to get
 usage information. You can get a better idea of how NKA behaves by
 experimenting with these programs.
 
-The directory `src-C++` contains a somewhat different version of NKA. This
-is a C++ implementation (by Markus Berndt) that was designed to work with
-the NOX package from Trilinos (http://trilinos.org), and which was used to
-generate the numerical results in [4]. This code is now obsolete, however,
-and is just retained for reference. NOX now includes a version of Anderson
-Acceleration.
-
 References
 ----------
 1. N.N. Carlson and K. Miller. Design and Application of a Gradient-
