@@ -23,28 +23,36 @@ be found in [4]. A description can also be found in the slides `doc/nlk.pdf`.
 
 Using NKA
 ---------
-Several different versions of NKA are provided here. The directory `src-F95`
-contains the original Fortran 95 implementation. (The original implementation
-was in Fortran 77.) A newer object-oriented version implemented in modern
-Fortran can be found in `src-F08`. That version requires a compiler that has
-a fairly complete implementation of the 2003 standard, perhaps with some minor
-2008 features. The directory `src-C` contains a C version.
 
-The source for these versions (F95, F08, C) consists of a single source file
-that can be easily incorporated into your own software project.  They all
-feature essentially the same interface, which is documented in the comments
-at the top of the source file.
+Several different versions of NKA are provided here:
+* The directory `src-F95` contains the original Fortran 95 implementation.
+  (The original implementation was in Fortran 77.)
+* The directory `src-F08` contains a newer object-oriented version implemented
+  in modern Fortran. That version requires a compiler that supports the 2008
+  standard plus perhaps some minor 2018 features.
+* The directory `src-F08-vector` contains a version of `src-F08` that operates
+  with abstract vector objects rather than contiguous rank-1 arrays as in the
+  other versions. This provides much greater flexibility, but at the expense
+  of requiring an application specific implementation of the base vector class.
+* The directory `src-C` contains a C version, which is a straightforward
+  translation of the F95 version.
+
+The source for these versions consists of one or two source files that can
+be easily incorporated into your own software project. They all feature
+essentially the same interface, which is documented in the comments at the
+top of the source file.
 
 Each of these versions also contain an example program that illustrates how
 to use NKA by solving a nonlinear elliptic equation on a regular 2D grid.
-There is a simple cmake-based build system. A simple `cmake .` in the sub-
-directory, followed by `make` should build the `nka_example` program. If cmake
+There is a simple CMake-based build system. A simple `cmake .` in the sub-
+directory, followed by `make` will build the `nka_example` program. If `cmake`
 has problems finding your Fortran compiler, try setting the `FC` environment
 variable to the path to it. For a test, output from `nka_example` should be
-compared to that in `reference_output`. The `F08/nka_example` program is a bit
-more elaborate, allowing several problem and method parameters to be set on
-the command line. Use the `--help` option to get usage information. You can
-get a better idea of how NKA behaves by experimenting with this program.
+compared to that in `reference_output`. The "F08" and "F08-vector" example
+programs are a bit more elaborate, allowing several problem and method
+parameters to be set on the command line. Use the `--help` option to get
+usage information. You can get a better idea of how NKA behaves by
+experimenting with these programs.
 
 The directory `src-C++` contains a somewhat different version of NKA. This
 is a C++ implementation (by Markus Berndt) that was designed to work with
