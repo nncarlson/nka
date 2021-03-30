@@ -98,8 +98,6 @@
 !!
 !!  VEC_TOL() returns the vector drop tolerance.
 !!
-!!  REAL_KIND() returns the kind parameter value expected of all real arguments.
-!!
 !!  DEFINED() returns the value true if the object is well-defined; otherwise
 !!    it returns the value false.  Defined means that the data components of
 !!    the object are properly and consistently defined.  Due to the significant
@@ -127,7 +125,7 @@
 !!  The accelerated iteration would look something like
 !!
 !!    type(nka) :: accel
-!!    call accel%init (size(v), mvec=5)
+!!    call accel%init(size(x), mvec=5)
 !!    x = 0
 !!    do <until converged>
 !!      dx = PC(F(x))
@@ -169,23 +167,22 @@ module nka_type
     integer :: first, last, free
     integer, allocatable :: next(:), prev(:)
   contains
-    procedure :: init => nka_init
-    procedure :: set_vec_tol => nka_set_vec_tol
-    procedure :: set_dot_prod => nka_set_dot_prod
-    procedure :: vec_len => nka_vec_len
-    procedure :: num_vec => nka_num_vec
-    procedure :: max_vec => nka_max_vec
-    procedure :: vec_tol => nka_vec_tol
-    procedure :: real_kind => nka_real_kind
-    procedure :: accel_update => nka_accel_update
-    procedure :: relax => nka_relax
-    procedure :: restart => nka_restart
-    procedure :: defined => nka_defined
+    procedure :: init
+    procedure :: set_vec_tol
+    procedure :: set_dot_prod
+    procedure :: vec_len
+    procedure :: num_vec
+    procedure :: max_vec
+    procedure :: vec_tol
+    procedure :: accel_update
+    procedure :: relax
+    procedure :: restart
+    procedure :: defined
   end type nka
 
 contains
 
-  subroutine nka_init (this, vlen, mvec)
+  subroutine init(this, vlen, mvec)
     class(nka), intent(out) :: this
     integer, intent(in) :: vlen
     integer, intent(in) :: mvec
@@ -198,72 +195,66 @@ contains
     n = mvec + 1
     allocate(this%v(vlen,n), this%w(vlen,n))
     allocate(this%h(n,n), this%next(n), this%prev(n))
-    call nka_restart (this)
-    ASSERT(nka_defined(this))
-  end subroutine nka_init
+    call this%restart
+    ASSERT(defined(this))
+  end subroutine
 
-  subroutine nka_set_vec_tol (this, vtol)
+  subroutine set_vec_tol(this, vtol)
     class(nka), intent(inout) :: this
     real(r8), intent(in) :: vtol
     ASSERT(vtol > 0.0_r8)
     this%vtol = vtol
-  end subroutine nka_set_vec_tol
+  end subroutine
 
-  subroutine nka_set_dot_prod (this, dot_prod)
+  subroutine set_dot_prod(this, dot_prod)
     class(nka), intent(inout) :: this
     procedure(dp), pointer :: dot_prod
     ASSERT(associated(dot_prod))
     this%dp => dot_prod
-  end subroutine nka_set_dot_prod
+  end subroutine
 
-  real(r8) function dp (x, y)
+  real(r8) function dp(x, y)
     real(r8), intent(in) :: x(:), y(:)
     dp = dot_product(x, y)
-  end function dp
+  end function
 
-  integer function nka_num_vec (this)
+  integer function num_vec(this)
     class(nka), intent(in) :: this
     integer :: k
-    nka_num_vec = 0
+    num_vec = 0
     k = this%first
     do while (k /= 0)
-      nka_num_vec = nka_num_vec + 1
+      num_vec = num_vec + 1
       k = this%next(k)
     end do
-    if (this%pending) nka_num_vec = nka_num_vec - 1
-  end function nka_num_vec
+    if (this%pending) num_vec = num_vec - 1
+  end function
 
-  integer function nka_max_vec (this)
+  integer function max_vec(this)
     class(nka), intent(in) :: this
-    nka_max_vec = this%mvec
-  end function nka_max_vec
+    max_vec = this%mvec
+  end function
 
-  integer function nka_vec_len (this)
+  integer function vec_len(this)
     class(nka), intent(in) :: this
-    nka_vec_len = this%vlen
-  end function nka_vec_len
+    vec_len = this%vlen
+  end function
 
-  real(r8) function nka_vec_tol (this)
+  real(r8) function vec_tol(this)
     class(nka), intent(in) :: this
-    nka_vec_tol = this%vtol
-  end function nka_vec_tol
-
-  integer function nka_real_kind (this)
-    class(nka), intent(in) :: this
-    nka_real_kind = kind(this%h)
-  end function nka_real_kind
+    vec_tol = this%vtol
+  end function
 
 
-  subroutine nka_accel_update (this, f)
+  subroutine accel_update(this, f)
 
     class(nka), intent(inout) :: this
     real(r8),   intent(inout) :: f(:)
 
-    ! local variables.
     integer :: i, j, k, new, nvec
     real(r8) :: s, hkk, hkj, cj, c(this%mvec+1)
 
-    ASSERT(nka_defined(this))
+    ASSERT(defined(this))
     ASSERT(size(f) == size(this%v,dim=1))
 
    !!!
@@ -281,7 +272,7 @@ contains
       !! (unless the function value is itself 0), and we merely want to do
       !! something reasonable here and hope that situation is detected on the
       !! outside.
-      if (s == 0.0_r8) call nka_relax (this)
+      if (s == 0.0_r8) call this%relax
 
     end if
 
@@ -425,10 +416,10 @@ contains
     !! The original f and accelerated update are cached for the next call.
     this%pending = .true.
 
-  end subroutine nka_accel_update
+  end subroutine accel_update
 
 
-  subroutine nka_restart (this)
+  subroutine restart(this)
     class(nka), intent(inout) :: this
     integer :: k
     this%subspace = .false.
@@ -442,10 +433,10 @@ contains
       this%next(k) = k + 1
     end do
     this%next(size(this%next)) = 0
-  end subroutine nka_restart
+  end subroutine
 
 
-  subroutine nka_relax (this)
+  subroutine relax(this)
     class(nka), intent(inout) :: this
     integer :: new
     if (this%pending) then
@@ -463,38 +454,38 @@ contains
       this%free = new
       this%pending = .false.
     end if
-  end subroutine nka_relax
+  end subroutine
 
 
-  logical function nka_defined (this)
+  logical function defined(this)
 
     class(nka), intent(in) :: this
 
     integer :: n
     logical, allocatable :: tag(:)
 
-    CHECKLIST: do
-      nka_defined = .false.
-      if (this%mvec < 1) exit
-      if (.not.allocated(this%v)) exit
-      if (.not.allocated(this%w)) exit
-      if (any(shape(this%v) /= shape(this%w))) exit
-      if (size(this%v,dim=1) /= this%vlen) exit
-      if (size(this%v,dim=2) /= this%mvec+1) exit
-      if (.not.allocated(this%h)) exit
-      if (size(this%h,dim=1) /= this%mvec+1) exit
-      if (size(this%h,dim=2) /= this%mvec+1) exit
-      if (.not.allocated(this%next)) exit
-      if (size(this%next) /= this%mvec+1) exit
-      if (.not.allocated(this%prev)) exit
-      if (size(this%prev) /= this%mvec+1) exit
+    CHECKLIST: block
+      defined = .false.
+      if (this%mvec < 1) exit CHECKLIST
+      if (.not.allocated(this%v)) exit CHECKLIST
+      if (.not.allocated(this%w)) exit CHECKLIST
+      if (any(shape(this%v) /= shape(this%w))) exit CHECKLIST
+      if (size(this%v,dim=1) /= this%vlen) exit CHECKLIST
+      if (size(this%v,dim=2) /= this%mvec+1) exit CHECKLIST
+      if (.not.allocated(this%h)) exit CHECKLIST
+      if (size(this%h,dim=1) /= this%mvec+1) exit CHECKLIST
+      if (size(this%h,dim=2) /= this%mvec+1) exit CHECKLIST
+      if (.not.allocated(this%next)) exit CHECKLIST
+      if (size(this%next) /= this%mvec+1) exit CHECKLIST
+      if (.not.allocated(this%prev)) exit CHECKLIST
+      if (size(this%prev) /= this%mvec+1) exit CHECKLIST
 
-      if (this%vtol <= 0.0_r8) exit
+      if (this%vtol <= 0.0_r8) exit CHECKLIST
 
       n = size(this%next)
-      if (any(this%next < 0) .or. any(this%next > n)) exit
-      if (this%first < 0 .or. this%first > n) exit
-      if (this%free  < 0 .or. this%free  > n) exit
+      if (any(this%next < 0) .or. any(this%next > n)) exit CHECKLIST
+      if (this%first < 0 .or. this%first > n) exit CHECKLIST
+      if (this%free  < 0 .or. this%free  > n) exit CHECKLIST
 
       !! Tag array: each location is either in the free list or vector list.
       allocate(tag(size(this%next)))
@@ -502,10 +493,10 @@ contains
 
       !! Check the vector list for consistency.
       if (this%first == 0) then
-        if (this%last /= 0) exit
+        if (this%last /= 0) exit CHECKLIST
       else
         n = this%first
-        if (this%prev(n) /= 0) exit
+        if (this%prev(n) /= 0) exit CHECKLIST
         tag(n) = .true.
         do while (this%next(n) /= 0)
           if (this%prev(this%next(n)) /= n) exit CHECKLIST
@@ -513,7 +504,7 @@ contains
           if (tag(n)) exit CHECKLIST
           tag(n) = .true.
         end do
-        if (this%last /= n) exit
+        if (this%last /= n) exit CHECKLIST
       end if
 
       !! Check the free list.
@@ -525,14 +516,11 @@ contains
       end do
 
       !! All locations accounted for?
-      if (.not.all(tag)) exit
+      if (.not.all(tag)) exit CHECKLIST
 
-      nka_defined = .true.
-      exit
-    end do CHECKLIST
+      defined = .true.
+    end block CHECKLIST
 
-    if (allocated(tag)) deallocate(tag)
-
-  end function nka_defined
+  end function defined
 
 end module nka_type
