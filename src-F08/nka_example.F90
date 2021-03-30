@@ -12,7 +12,7 @@
 !!
 !!      -Div[(a + u)Grad[u]] = q,  u:[0,1]^2 -> R
 !!
-!!  with zero boundary values.  We use a mimetic discretization over a
+!!  with zero boundary values.  We use a finite volume discretization over a
 !!  completely regular rectangular mesh.  The scalar field u is discretized
 !!  in the cell-based space.  The discrete equations are of the form r(u) = 0,
 !!  where r(u) = A(u) u - q.  A(u) is a symmetric positive definite matrix
@@ -72,21 +72,18 @@ module system_type
 
   type, public :: system
     private
-    integer :: nx, ny
+    integer, public :: nx, ny
     real(r8) :: a, hx, hy
     real(r8), allocatable :: ax(:,:), ay(:,:), ac(:,:), q(:,:)
   contains
-    procedure :: init => system_init
-    procedure :: residual => system_residual
-    procedure :: pc_ssor => system_pc_ssor
-    procedure :: size => system_size
-    procedure :: xsize => system_xsize
-    procedure :: ysize => system_ysize
+    procedure :: init
+    procedure :: residual
+    procedure :: pc_ssor
   end type system
 
 contains
 
-  subroutine system_init (this, a, nx, ny)
+  subroutine init(this, a, nx, ny)
     class(system), intent(out) :: this
     real(r8), intent(in) :: a
     integer,  intent(in) :: nx, ny
@@ -101,24 +98,9 @@ contains
     allocate(this%ax(nx+1,ny), this%ay(nx,ny+1), this%ac(nx,ny))
     allocate(this%q(nx,ny))
     this%q = 1.0_r8
-  end subroutine system_init
+  end subroutine
 
-  pure integer function system_size (this)
-    class(system), intent(in) :: this
-    system_size = this%nx * this%ny
-  end function system_size
-
-  pure integer function system_xsize (this)
-    class(system), intent(in) :: this
-    system_xsize = this%nx
-  end function system_xsize
-
-  pure integer function system_ysize (this)
-    class(system), intent(in) :: this
-    system_ysize = this%ny
-  end function system_ysize
-
-  subroutine system_residual (this, uext, r)
+  subroutine residual(this, uext, r)
     class(system), intent(inout) :: this
     real(r8), intent(in)  :: uext(0:,0:)  ! solution array extended with boundary data
     real(r8), intent(out) :: r(:,:)
@@ -127,7 +109,7 @@ contains
     ASSERT(ubound(uext,2) == this%ny+1)
     ASSERT(size(r,1) == this%nx)
     ASSERT(size(r,2) == this%ny)
-    call update_system (this, uext)
+    call update_system(this, uext)
     do k = 1, this%ny
       do j = 1, this%nx
         r(j,k) = this%ac(j,k)*uext(j,k) - this%ax(j,k)*uext(j-1,k) - this%ax(j+1,k)*uext(j+1,k) &
@@ -135,9 +117,9 @@ contains
                                         - this%q(j,k)
       end do
     end do
-  end subroutine system_residual
+  end subroutine
 
-  subroutine update_system (this, uext)
+  subroutine update_system(this, uext)
     class(system), intent(inout) :: this
     real(r8), intent(in) :: uext(0:,0:) ! solution array extended with boundary data
     integer :: j, k
@@ -160,9 +142,9 @@ contains
         this%ac(j,k) = this%ax(j,k) + this%ax(j+1,k) + this%ay(j,k) + this%ay(j,k+1)
       end do
     end do
-  end subroutine update_system
+  end subroutine
 
-  subroutine system_pc_ssor (this, nsweep, omega, r)
+  subroutine pc_ssor(this, nsweep, omega, r)
     class(system), intent(in)    :: this
     integer,       intent(in)    :: nsweep
     real(r8),      intent(in)    :: omega
@@ -194,7 +176,7 @@ contains
     end do
     !! Copy result to return array.
     r = z(1:this%nx,1:this%ny)
-  end subroutine system_pc_ssor
+  end subroutine
 
 end module system_type
 
@@ -217,13 +199,13 @@ module solver_type
     real(r8) :: omega
     type(nka), allocatable :: accel
   contains
-    procedure :: init => solver_init
-    procedure :: solve => solver_solve
+    procedure :: init
+    procedure :: solve
   end type solver
 
 contains
 
-  subroutine solver_init (this, sys, nsweep, omega, mvec)
+  subroutine init(this, sys, nsweep, omega, mvec)
     class(solver), intent(out) :: this
     type(system), intent(in), target :: sys
     integer,  intent(in) :: nsweep  ! number of SSOR preconditioner sweeps
@@ -237,46 +219,41 @@ contains
     this%omega  = omega
     if (mvec > 0) then
       allocate(this%accel)
-      call this%accel%init (sys%size(), mvec=mvec)
+      call this%accel%init(sys%nx*sys%ny, mvec=mvec)
     end if
-  end subroutine solver_init
+  end subroutine
 
-  subroutine solver_solve (this, uext)
+  subroutine solve(this, uext)
     class(solver), intent(inout) :: this
     real(r8), intent(inout), target :: uext(0:,0:)  ! solution and boundary values
     integer :: itr, nx, ny
     real(r8) :: rnorm, rnorm0, red, rate
     real(r8), pointer :: u(:,:), r(:,:)
-    real(r8), target :: r1(this%sys%size())
+    real(r8), target :: r1(this%sys%nx*this%sys%ny)
     integer, parameter :: MAXITR = 999
     real(r8), parameter :: TOL = 1.0d-6
-    ASSERT(ubound(uext,1) == this%sys%xsize()+1)
-    ASSERT(ubound(uext,2) == this%sys%ysize()+1)
+    ASSERT(ubound(uext,1) == this%sys%nx+1)
+    ASSERT(ubound(uext,2) == this%sys%ny+1)
     write(*,fmt='(a4,a14,a13,a8)') 'Iter', 'Residual Norm', 'Reduction', 'Rate'
-    nx = this%sys%xsize()
-    ny = this%sys%ysize()
+    nx = this%sys%nx
+    ny = this%sys%ny
     r(1:nx,1:ny) => r1    ! r1 is a rank-1 view of the residual array
     u => uext(1:nx,1:ny)  ! trim off the boundary data from the solution array
-    call this%sys%residual (uext, r)
-    rnorm0 = l2norm(r1)
+    call this%sys%residual(uext, r)
+    rnorm0 = norm2(r1)
     write(*,'(i3,a,es14.6)') 0, ':', rnorm0
     do itr = 1, MAXITR
-      call this%sys%pc_ssor (this%nsweep, this%omega, r)
-      if (allocated(this%accel)) call this%accel%accel_update (r1)
+      call this%sys%pc_ssor(this%nsweep, this%omega, r)
+      if (allocated(this%accel)) call this%accel%accel_update(r1)
       u = u - r
-      call this%sys%residual (uext, r)
-      rnorm = l2norm(r1)
+      call this%sys%residual(uext, r)
+      rnorm = norm2(r1)
       red = rnorm / rnorm0
       rate = red**(1.0_r8/itr)
       write(*,fmt='(i3,a,es14.6,es13.3,f8.3)') itr, ':', rnorm, red, rate
       if (rnorm < TOL * rnorm0) exit
     end do
-  end subroutine solver_solve
-
-  real(r8) function l2norm (x)
-    real(r8), intent(in) :: x(:)
-    l2norm = sqrt(sum(x**2))
-  end function l2norm
+  end subroutine solve
 
 end module solver_type
 
@@ -305,7 +282,7 @@ contains
     character(64) :: arg
     integer :: n, num_arg, ios
 
-    call get_command_argument (0, arg)
+    call get_command_argument(0, arg)
     n = scan(arg, '/', back=.true.)
     prog = trim(arg(n+1:))
 
@@ -314,48 +291,48 @@ contains
 
     do while (n < num_arg)
       n = n + 1
-      call get_command_argument (n, arg)
+      call get_command_argument(n, arg)
       select case (arg)
       case ('--help')
         call usage_summary
       case ('-a')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) a
-        if (ios /= 0) call usage_halt ('invalid value for -a: ' // trim(arg))
-        if (a <= 0.0_r8) call usage_halt ('invalid value for -a: must be >0')
+        if (ios /= 0) call usage_halt('invalid value for -a: ' // trim(arg))
+        if (a <= 0.0_r8) call usage_halt('invalid value for -a: must be >0')
       case ('-n')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) nx
-        if (ios /= 0) call usage_halt ('invalid value for -n: ' // trim(arg))
-        if (nx < 3) call usage_halt ('invalid value for -n: must be >2')
+        if (ios /= 0) call usage_halt('invalid value for -n: ' // trim(arg))
+        if (nx < 3) call usage_halt('invalid value for -n: must be >2')
         ny = nx
       case ('--sweeps')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) nsweep
-        if (ios /= 0) call usage_halt ('invalid value for --sweeps: ' // trim(arg))
-        if (nsweep <= 0) call usage_halt ('invalid value for --sweeps: must be >0')
+        if (ios /= 0) call usage_halt('invalid value for --sweeps: ' // trim(arg))
+        if (nsweep <= 0) call usage_halt('invalid value for --sweeps: must be >0')
       case ('--omega')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) omega
-        if (ios /= 0) call usage_halt ('invalid value for --omega: ' // trim(arg))
-        if (omega <= 0.0_r8) call usage_halt ('invalid value for --omega: must be >0')
+        if (ios /= 0) call usage_halt('invalid value for --omega: ' // trim(arg))
+        if (omega <= 0.0_r8) call usage_halt('invalid value for --omega: must be >0')
       case ('--nka-vec')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) mvec
-        if (ios /= 0) call usage_halt ('invalid value for --nka-vec: ' // trim(arg))
-        if (mvec < 0) call usage_halt ('invalid value for --nka-vec: must be >=0')
+        if (ios /= 0) call usage_halt('invalid value for --nka-vec: ' // trim(arg))
+        if (mvec < 0) call usage_halt('invalid value for --nka-vec: must be >=0')
       case default
-        call usage_halt ('invalid option: ' // trim(arg))
+        call usage_halt('invalid option: ' // trim(arg))
       end select
     end do
 
@@ -373,14 +350,14 @@ contains
     write(*,fmt='(a)') ' --nka-vec M  Use an NKA acceleration subspace of dimension at most M;'
     write(*,fmt='(a)') '              0 turns off NKA acceleration (default).'
     stop
-  end subroutine usage_summary
+  end subroutine
 
   subroutine usage_halt (message)
     character(*), intent(in) :: message
     write(*,fmt='(a)') prog // ': ' // message
     write(*,fmt='(a)') 'Use `' // prog // ' --help'' to get usage information.'
     stop
-  end subroutine usage_halt
+  end subroutine
 
 end module command_line
 
@@ -412,14 +389,37 @@ contains
     call parse_command_line
 
     !! Define the discrete problem.
-    call sys%init (a=a, nx=nx, ny=ny)
+    call sys%init(a=a, nx=nx, ny=ny)
 
     !! Define the solver and then solve.
-    call sol%init (sys, nsweep=nsweep, omega=omega, mvec=mvec)
-    allocate(u(0:sys%xsize()+1,0:sys%ysize()+1))
+    call sol%init(sys, nsweep=nsweep, omega=omega, mvec=mvec)
+    allocate(u(0:nx+1,0:ny+1))
     u = 0.0_r8  ! initial solution guess plus boundary data
-    call sol%solve (u)
+    call sol%solve(u)
 
-  end subroutine run
+    !! Generate a VTK plot file that can be rendered by Paraview.
+    call vtk_plot(u)
+
+  end subroutine
+
+  subroutine vtk_plot(u)
+    real(r8), intent(in) :: u(0:,0:)
+    integer :: lun, nx, ny
+    open(newunit=lun,file='out.vtk')
+    nx = ubound(u,dim=1)-1
+    ny = ubound(u,dim=2)-1
+    write(lun,'("# vtk DataFile Version 3.0")')
+    write(lun,'("example solution")')
+    write(lun,'("ASCII")')
+    write(lun,'("DATASET STRUCTURED_POINTS")')
+    write(lun,'("DIMENSIONS",3(1x,i0))') nx+1, ny+1, 1
+    write(lun,'("ORIGIN 0 0 0")')
+    write(lun,'("SPACING",3(1x,g0))') 1.0_r8/nx, 1.0_r8/ny, 1
+    write(lun,'("CELL_DATA ",i0)') nx*ny
+    write(lun,'("SCALARS u float 1")')
+    write(lun,'("LOOKUP_TABLE default")')
+    write(lun,'(g0)') u(1:nx,1:ny)
+    close(lun)
+  end subroutine
 
 end program nka_example

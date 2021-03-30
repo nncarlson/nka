@@ -1,6 +1,13 @@
 ===============================================================================
-HISTORY                                                 nlkain-2.0 (2013/6/1)
+HISTORY                                                 nlk-2.1 (2021/3/30)
 ===============================================================================
+
+nlk-2.1 (2021/3/3):
+
+o Added a new modern Fortran version that operates with "vector" class
+  objects for greater flexibility in real applications.
+
+o Removed the obsolete C++ Trilinos:Nox-based implementation.
 
 nlkain-2.0 (2013/6/1):
 

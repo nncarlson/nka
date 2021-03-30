@@ -200,13 +200,13 @@ module solver_type
     type(nka), allocatable :: accel
     type(grid_vector) :: w ! persistent workspace
   contains
-    procedure :: init => solver_init
-    procedure :: solve => solver_solve
+    procedure :: init
+    procedure :: solve
   end type solver
 
 contains
 
-  subroutine solver_init(this, sys, nsweep, omega, mvec)
+  subroutine init(this, sys, nsweep, omega, mvec)
     class(solver), intent(out) :: this
     type(system), intent(in), target :: sys
     integer,  intent(in) :: nsweep  ! number of SSOR preconditioner sweeps
@@ -223,9 +223,9 @@ contains
       allocate(this%accel)
       call this%accel%init(this%w, mvec=mvec)
     end if
-  end subroutine solver_init
+  end subroutine
 
-  subroutine solver_solve(this, u)
+  subroutine solve(this, u)
 
     class(solver), intent(inout) :: this
     type(grid_vector), intent(inout) :: u ! solution and boundary values
@@ -253,7 +253,7 @@ contains
       end do
     end associate
 
-  end subroutine solver_solve
+  end subroutine solve
 
 end module solver_type
 
@@ -282,7 +282,7 @@ contains
     character(64) :: arg
     integer :: n, num_arg, ios
 
-    call get_command_argument (0, arg)
+    call get_command_argument(0, arg)
     n = scan(arg, '/', back=.true.)
     prog = trim(arg(n+1:))
 
@@ -291,48 +291,48 @@ contains
 
     do while (n < num_arg)
       n = n + 1
-      call get_command_argument (n, arg)
+      call get_command_argument(n, arg)
       select case (arg)
       case ('--help')
         call usage_summary
       case ('-a')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) a
-        if (ios /= 0) call usage_halt ('invalid value for -a: ' // trim(arg))
-        if (a <= 0.0_r8) call usage_halt ('invalid value for -a: must be >0')
+        if (ios /= 0) call usage_halt('invalid value for -a: ' // trim(arg))
+        if (a <= 0.0_r8) call usage_halt('invalid value for -a: must be >0')
       case ('-n')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) nx
-        if (ios /= 0) call usage_halt ('invalid value for -n: ' // trim(arg))
-        if (nx < 3) call usage_halt ('invalid value for -n: must be >2')
+        if (ios /= 0) call usage_halt('invalid value for -n: ' // trim(arg))
+        if (nx < 3) call usage_halt('invalid value for -n: must be >2')
         ny = nx
       case ('--sweeps')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) nsweep
-        if (ios /= 0) call usage_halt ('invalid value for --sweeps: ' // trim(arg))
-        if (nsweep <= 0) call usage_halt ('invalid value for --sweeps: must be >0')
+        if (ios /= 0) call usage_halt('invalid value for --sweeps: ' // trim(arg))
+        if (nsweep <= 0) call usage_halt('invalid value for --sweeps: must be >0')
       case ('--omega')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) omega
-        if (ios /= 0) call usage_halt ('invalid value for --omega: ' // trim(arg))
-        if (omega <= 0.0_r8) call usage_halt ('invalid value for --omega: must be >0')
+        if (ios /= 0) call usage_halt('invalid value for --omega: ' // trim(arg))
+        if (omega <= 0.0_r8) call usage_halt('invalid value for --omega: must be >0')
       case ('--nka-vec')
         n = n + 1
-        if (n > num_arg) call usage_halt ('option requires an argument: ' // trim(arg))
-        call get_command_argument (n, arg)
+        if (n > num_arg) call usage_halt('option requires an argument: ' // trim(arg))
+        call get_command_argument(n, arg)
         read(arg,*,iostat=ios) mvec
-        if (ios /= 0) call usage_halt ('invalid value for --nka-vec: ' // trim(arg))
-        if (mvec < 0) call usage_halt ('invalid value for --nka-vec: must be >=0')
+        if (ios /= 0) call usage_halt('invalid value for --nka-vec: ' // trim(arg))
+        if (mvec < 0) call usage_halt('invalid value for --nka-vec: must be >=0')
       case default
-        call usage_halt ('invalid option: ' // trim(arg))
+        call usage_halt('invalid option: ' // trim(arg))
       end select
     end do
 
@@ -352,7 +352,7 @@ contains
     stop
   end subroutine
 
-  subroutine usage_halt (message)
+  subroutine usage_halt(message)
     character(*), intent(in) :: message
     write(*,fmt='(a)') prog // ': ' // message
     write(*,fmt='(a)') 'Use `' // prog // ' --help'' to get usage information.'
@@ -396,15 +396,9 @@ contains
     call sol%init(sys, nsweep=nsweep, omega=omega, mvec=mvec)
     call u%init(nx, ny)
     call u%setval(0.0_r8) ! initial solution guess plus boundary data
-    block
-    use iso_fortran_env, only: int64
-    integer(int64) :: c0, c1, cr
-    call system_clock(c0)
     call sol%solve(u)
-    call system_clock(c1, cr)
-    print '(f5.2)', (c1-c0)/real(cr)
-    end block
 
+    !! Generate a VTK plot file that can be rendered by Paraview.
     call vtk_plot(u)
 
   end subroutine
