@@ -235,6 +235,9 @@ contains
     integer, parameter :: MAXITR = 999
     real(r8), parameter :: TOL = 1.0d-6
 
+    !! Start each solve with a fresh acceleration subspace.
+    !! Use relax instead of restart to reuse the existing subspace.
+    if (allocated(this%accel)) call this%accel%restart
     write(*,fmt='(a4,a14,a13,a8)') 'Iter', 'Residual Norm', 'Reduction', 'Rate'
     associate (r => this%w)
       call this%sys%residual(u, r)

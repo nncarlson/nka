@@ -80,7 +80,7 @@ contains
   subroutine init_mold(this, mold)
     class(grid_vector), intent(out) :: this
     class(grid_vector), intent(in)  :: mold
-    allocate(this%array, source=mold%array)
+    call init_dim(this, mold%nx, mold%ny)
   end subroutine
 
   subroutine clone1(this, clone)

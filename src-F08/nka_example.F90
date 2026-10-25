@@ -234,6 +234,9 @@ contains
     real(r8), parameter :: TOL = 1.0d-6
     ASSERT(ubound(uext,1) == this%sys%nx+1)
     ASSERT(ubound(uext,2) == this%sys%ny+1)
+    !! Start each solve with a fresh acceleration subspace.
+    !! Use relax instead of restart to reuse the existing subspace.
+    if (allocated(this%accel)) call this%accel%restart
     write(*,fmt='(a4,a14,a13,a8)') 'Iter', 'Residual Norm', 'Reduction', 'Rate'
     nx = this%sys%nx
     ny = this%sys%ny
